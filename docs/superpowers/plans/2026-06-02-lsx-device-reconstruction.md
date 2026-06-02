@@ -93,7 +93,7 @@ docs/reconstruction/lsx-device-status.md
 docs/superpowers/plans/2026-06-02-lsx-device-reconstruction.md
 ```
 
-- [ ] **Step 1: Confirm branch and current diff**
+- [x] **Step 1: Confirm branch and current diff**
 
 Run:
 
@@ -109,7 +109,7 @@ Expected:
 Only POM/module reconstruction changes and docs are present
 ```
 
-- [ ] **Step 2: Commit only the branch setup and documentation if the user approves**
+- [x] **Step 2: Commit only the branch setup and documentation if the user approves**
 
 Run:
 
@@ -124,6 +124,12 @@ Expected:
 [lsx-device-2.1.1 <commit>] docs: record lsx device reconstruction plan
 ```
 
+Actual:
+
+```text
+[lsx-device-2.1.1 bbff1db1] docs: record lsx device reconstruction plan
+```
+
 ## Task 2: Finish Maven Module Skeleton
 
 **Files:**
@@ -134,7 +140,7 @@ lsx-device/pom.xml
 all child pom.xml files with parent version 2.1.1
 ```
 
-- [ ] **Step 1: Verify Maven coordinates match the jar**
+- [x] **Step 1: Verify Maven coordinates match the jar**
 
 Run:
 
@@ -152,7 +158,7 @@ lsx-device artifactId is lsx-device
 r2dbc-mysql is 0.9.1
 ```
 
-- [ ] **Step 2: Verify every child module points to parent 2.1.1**
+- [x] **Step 2: Verify every child module points to parent 2.1.1**
 
 Run:
 
@@ -166,7 +172,7 @@ Expected:
 No matches
 ```
 
-- [ ] **Step 3: Run Maven model validation**
+- [x] **Step 3: Run Maven model validation**
 
 Run:
 
@@ -186,6 +192,15 @@ If Maven cannot resolve public/private dependencies, record the missing artifact
 docs/reconstruction/lsx-device-diff-notes.md
 ```
 
+Actual:
+
+```text
+Command: .\mvnw.cmd -pl lsx-device -am -DskipTests validate
+Environment: JAVA_HOME=C:\Program Files\Java\jdk-21.0.6
+Result: BUILD SUCCESS
+Date: 2026-06-02 18:16:43 +08:00
+```
+
 ## Task 3: Restore Jar Resources Into lsx-device
 
 **Files:**
@@ -200,7 +215,7 @@ lsx-device/src/main/resources/index.html
 docs/reconstruction/lsx-device-diff-notes.md
 ```
 
-- [ ] **Step 1: Extract resources from the jar**
+- [x] **Step 1: Extract resources from the jar**
 
 Run:
 
@@ -221,7 +236,7 @@ F:\project\other\jetlinks\.codex_tmp\lsx-resource-extract\BOOT-INF\classes\appli
 F:\project\other\jetlinks\.codex_tmp\lsx-resource-extract\BOOT-INF\classes\application-wj.yml
 ```
 
-- [ ] **Step 2: Copy resources into lsx-device**
+- [x] **Step 2: Copy resources into lsx-device**
 
 Run:
 
@@ -235,7 +250,7 @@ Expected:
 lsx-device/src/main/resources/application-wj.yml exists
 ```
 
-- [ ] **Step 3: Protect secrets before publishing**
+- [x] **Step 3: Protect secrets before publishing**
 
 Inspect:
 
@@ -250,6 +265,31 @@ Credentials are identified and documented before pushing to a public-visible bra
 ```
 
 If the private GitHub repository is not guaranteed private, replace production secrets with local placeholders before committing.
+
+Actual:
+
+```text
+Extracted and copied:
+  application.yml
+  application-wj.yml
+  logback-spring.xml
+  banner.txt
+  hsweb-starter.js
+  index.html
+
+Removed from lsx-device because they are not present in the old jar:
+  application-embedded.yml
+  application-local.yml
+
+Replaced raw Redis, R2DBC, and TDengine passwords with environment placeholders:
+  LSX_REDIS_PASSWORD
+  LSX_DB_PASSWORD
+  LSX_TDENGINE_PASSWORD
+
+Secret scan:
+  Searched lsx-device and reconstruction docs for raw jar credential fragments.
+  Result: no raw jar credential fragments remain in reconstruction source/docs.
+```
 
 ## Task 4: Compare Startup Classes Against Jar
 
@@ -266,7 +306,7 @@ lsx-device/src/main/java/org/jetlinks/community/standalone/web/SystemInfoControl
 docs/reconstruction/lsx-device-diff-notes.md
 ```
 
-- [ ] **Step 1: Decompile or inspect jar startup classes**
+- [x] **Step 1: Decompile or inspect jar startup classes**
 
 Use Recaf UI or `javap` from the bundled JDK:
 
@@ -281,7 +321,7 @@ Expected:
 Method signatures and important annotations are visible
 ```
 
-- [ ] **Step 2: Compare class list**
+- [x] **Step 2: Compare class list**
 
 Run:
 
@@ -295,7 +335,7 @@ Expected:
 All seven startup classes exist under lsx-device
 ```
 
-- [ ] **Step 3: Record differences before changing code**
+- [x] **Step 3: Record differences before changing code**
 
 Create or update:
 
@@ -318,6 +358,15 @@ Expected:
 Every jar-vs-source difference has an explicit action before code edits.
 ```
 
+Actual:
+
+```text
+Extracted jar boot classes to .codex_tmp\lsx-boot-classes.
+Generated javap output in .codex_tmp\lsx-javap.
+The jar startup class list matches lsx-device source.
+No startup Java code change was required in this pass.
+```
+
 ## Task 5: Build lsx-device
 
 **Files:**
@@ -327,7 +376,7 @@ lsx-device/**
 pom.xml
 ```
 
-- [ ] **Step 1: Compile with tests skipped**
+- [x] **Step 1: Compile with tests skipped**
 
 Run:
 
@@ -342,7 +391,17 @@ BUILD SUCCESS
 F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
 ```
 
-- [ ] **Step 2: Compare built jar identity**
+Actual:
+
+```text
+Command: .\mvnw.cmd -pl lsx-device -am -DskipTests clean package
+Environment: JAVA_HOME=C:\Users\Administrator\.jdks\corretto-1.8.0_412
+Result: BUILD SUCCESS
+Finished at: 2026-06-02 18:26:15 +08:00
+Artifact: F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
+```
+
+- [x] **Step 2: Compare built jar identity**
 
 Run:
 
@@ -358,6 +417,29 @@ Built jar contains lsx-device Maven metadata
 Built jar contains application-wj.yml
 ```
 
+Actual:
+
+```text
+Built jar contains:
+  META-INF/maven/org.jetlinks.community/lsx-device/pom.properties
+  BOOT-INF/classes/application.yml
+  BOOT-INF/classes/application-wj.yml
+  BOOT-INF/lib/spring-boot-2.7.11.jar
+  BOOT-INF/lib/jetlinks-core-1.2.2.jar
+  BOOT-INF/lib/hsweb-core-4.0.17.jar
+  BOOT-INF/lib/r2dbc-mysql-0.9.1.jar
+
+Java bytecode:
+  org.jetlinks.community.standalone.JetLinksApplication major version 52
+
+Alignment checks:
+  BOOT-INF/lib old=357 new=357 diff=0
+  BOOT-INF/classes old=22 new=22 diff=0
+
+Intentional difference:
+  Raw jar credentials were replaced with environment placeholders in source and built jar.
+```
+
 ## Task 6: Local Runtime Preparation
 
 **Files:**
@@ -366,7 +448,7 @@ Built jar contains application-wj.yml
 docs/reconstruction/lsx-device-local-env.md
 ```
 
-- [ ] **Step 1: Document required middleware**
+- [x] **Step 1: Document required middleware**
 
 Create:
 
@@ -399,6 +481,13 @@ Expected:
 ```text
 Application starts far enough to connect to local MySQL and Redis
 If database is missing, error message names the missing local database
+```
+
+Current status:
+
+```text
+Created docs/reconstruction/lsx-device-local-env.md with JDK 8, MySQL, Redis, profile, and LSX_* environment variable instructions.
+Did not start the app yet because local MySQL/Redis credentials have not been provided and raw jar credentials were intentionally not committed.
 ```
 
 ## Task 7: Commit and Push Reconstruction Milestones

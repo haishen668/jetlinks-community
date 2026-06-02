@@ -6,30 +6,31 @@
 
     <groupId>org.jetlinks.community</groupId>
     <artifactId>jetlinks-community</artifactId>
-    <version>2.1.0-SNAPSHOT</version>
+    <version>2.1.1</version>
     <modules>
         <module>jetlinks-components</module>
         <module>jetlinks-manager</module>
         <module>jetlinks-standalone</module>
+        <module>lsx-device</module>
     </modules>
     <packaging>pom</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.locales>zh_CN</project.build.locales>
-        <spring.boot.version>2.7.14</spring.boot.version>
+        <spring.boot.version>2.7.11</spring.boot.version>
         <java.version>1.8</java.version>
         <project.build.jdk>${java.version}</project.build.jdk>
         <!--  基础通用模块依赖,快照版本表示正在持续迭代.发布后将同步到maven中央仓库 -->
         <!-- https://github.com/hs-web/hsweb-framework -->
-        <hsweb.framework.version>4.0.16</hsweb.framework.version>
+        <hsweb.framework.version>4.0.17</hsweb.framework.version>
         <!-- https://github.com/hs-web/hsweb-easy-orm -->
-        <easyorm.version>4.1.1</easyorm.version>
+        <easyorm.version>4.1.2</easyorm.version>
         <!-- https://github.com/jetlinks/jetlinks -->
-        <jetlinks.version>1.2.1</jetlinks.version>
+        <jetlinks.version>1.2.2</jetlinks.version>
         <!-- https://github.com/hs-web/reactor-excel -->
-        <reactor.excel.version>1.0.5</reactor.excel.version>
+        <reactor.excel.version>1.0.4</reactor.excel.version>
         <!-- https://github.com/jetlinks/reactor-ql -->
-        <reactor.ql.version>1.0.16</reactor.ql.version>
+        <reactor.ql.version>1.0.17</reactor.ql.version>
         <!-- https://github.com/jetlinks/jetlinks-plugin -->
         <jetlinks.plugin.version>1.0.1</jetlinks.plugin.version>
 
@@ -37,7 +38,7 @@
         <r2dbc.version>Borca-SR2</r2dbc.version>
         <hsweb.expands.version>3.0.2</hsweb.expands.version>
         <netty.version>4.1.89.Final</netty.version>
-        <elasticsearch.version>7.17.5</elasticsearch.version>
+        <elasticsearch.version>7.17.26</elasticsearch.version>
         <californium.version>3.7.0</californium.version>
         <fastjson.version>1.2.83</fastjson.version>
         <reactor.version>2020.0.31</reactor.version>

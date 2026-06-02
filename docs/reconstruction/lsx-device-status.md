@@ -123,9 +123,53 @@ Changed root dependency properties toward jar fingerprint:
   jetlinks.version          1.2.2
 Changed child POM parent versions from 2.1.0-SNAPSHOT to 2.1.1
 Replaced lsx-device/pom.xml with the pom.xml extracted from lsx-device.jar
+Copied jar resources into lsx-device/src/main/resources
+Removed resource files not present in the old jar from lsx-device
+Replaced raw jar credentials with environment placeholders
+Aligned dependency versions until BOOT-INF/lib diff is zero
 ```
 
-These changes have not been committed yet.
+These reconstruction changes have not been committed yet.
+
+## Current Verification
+
+Build command:
+
+```text
+.\mvnw.cmd -pl lsx-device -am -DskipTests clean package
+```
+
+Build environment:
+
+```text
+JAVA_HOME=C:\Users\Administrator\.jdks\corretto-1.8.0_412
+```
+
+Result:
+
+```text
+BUILD SUCCESS
+```
+
+Built artifact:
+
+```text
+F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
+```
+
+Alignment evidence:
+
+```text
+BOOT-INF/lib old=357 new=357 diff=0
+BOOT-INF/classes old=22 new=22 diff=0
+JetLinksApplication bytecode major version=52
+```
+
+Intentional difference:
+
+```text
+Raw jar credentials are not committed. Source uses LSX_* environment placeholders.
+```
 
 ## Jar Extraction Work Areas
 
@@ -150,7 +194,7 @@ Observed old jar profile examples:
 ```text
 application.yml:
   spring.profiles.active: dev
-  spring.redis.host: 124.71.164.4
+  spring.redis.host: remote Redis host from jar
   spring.r2dbc.url: r2dbc:mysql://124.71.164.4:3306/device_wj?ssl=false&serverZoneId=Asia/Shanghai
   easyorm.default-schema: device_wj
   easyorm.dialect: mysql
@@ -168,7 +212,7 @@ application-wj.yml:
   tdengine.enabled: false
 ```
 
-Sensitive credentials are present in the jar configs. Treat extracted config files as local development evidence and avoid publishing secrets.
+Sensitive credentials are present in the jar configs. Treat extracted config files as local development evidence and do not publish raw secrets.
 
 ## Immediate Next Decision
 
