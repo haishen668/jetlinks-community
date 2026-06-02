@@ -16,9 +16,9 @@ spring:
     resources:
       static-locations: file:./static/,/,classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/, classpath:/public/
   redis:
-    host: ${LSX_REDIS_HOST:127.0.0.1}
-    port: ${LSX_REDIS_PORT:6379}
-    password: ${LSX_REDIS_PASSWORD:}
+    host: 124.71.164.4
+    port: 6379
+    password: Ztwj@6688
     lettuce:
       pool:
         max-active: 1024
@@ -29,9 +29,9 @@ spring:
   r2dbc:
     # 需要手动创建数据库,启动会自动创建表,修改了配置easyorm相关配置也要修改
     #url: r2dbc:postgresql://127.0.0.1:5432/jetlinks
-    url: ${LSX_R2DBC_URL:r2dbc:mysql://127.0.0.1:3306/device_wj?ssl=false&serverZoneId=Asia/Shanghai} # 修改了配置easyorm相关配置也要修改
-    username: ${LSX_DB_USERNAME:device}
-    password: ${LSX_DB_PASSWORD:}
+    url: r2dbc:mysql://124.71.164.4:3306/device_wj?ssl=false&serverZoneId=Asia/Shanghai # 修改了配置easyorm相关配置也要修改
+    username: passrwer
+    password: Ztwj@6688
     pool:
       max-size: 32
       max-idle-time: 2m # 值不能大于mysql server的wait_timeout配置
@@ -56,7 +56,7 @@ tdengine:
     endpoints:
       - http://127.0.0.1:6041/
     username: root
-    password: ${LSX_TDENGINE_PASSWORD:}
+    password: taosdata
 elasticsearch:
   embedded:
     enabled: false # 为true时使用内嵌的elasticsearch,不建议在生产环境中使用

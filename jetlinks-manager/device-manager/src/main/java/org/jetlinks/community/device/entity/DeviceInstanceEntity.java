@@ -1,5 +1,6 @@
 package org.jetlinks.community.device.entity;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
@@ -162,6 +163,87 @@ public class DeviceInstanceEntity extends GenericEntity<String> implements Recor
     private Long modifyTime;
 
     @Column(length = 64)
+    @Schema(description = "所属人ID")
+    private String userId;
+
+    @Column
+    @Schema(description = "型号")
+    private String model;
+
+    @Comment("固件版本")
+    @Column(name = "firmware_version")
+    @Schema(description = "固件版本")
+    @JSONField(name = "version")
+    private String firmwareVersion;
+
+    @Comment("MAC地址")
+    @Column(name = "mac")
+    @Schema(description = "MAC地址")
+    private String mac;
+
+    @Comment("IMEI")
+    @Column(name = "imei")
+    @Schema(description = "IMEI")
+    private String imei;
+
+    @Comment("客户端地址")
+    @Column(name = "adress")
+    @Schema(description = "客户端地址")
+    private String adress;
+
+    @Comment("2.4G终端数")
+    @Column(name = "t24g_num")
+    @Schema(description = "2.4G终端数")
+    @JSONField(name = "t24g_num")
+    private Integer t24gNum;
+
+    @Comment("5G终端数")
+    @Column(name = "t5g_num")
+    @Schema(description = "5G终端数")
+    @JSONField(name = "t5g_num")
+    private Integer t5gNum;
+
+    @Comment("RSRP")
+    @Column(name = "rsrp")
+    @Schema(description = "RSRP")
+    private String rsrp;
+
+    @Comment("RSRQ")
+    @Column(name = "rsrq")
+    @Schema(description = "RSRQ")
+    private String rsrq;
+
+    @Comment("SINR")
+    @Column(name = "sinr")
+    @Schema(description = "SINR")
+    private String sinr;
+
+    @Comment("网络连接类型")
+    @Column(name = "network")
+    @Schema(description = "网络连接类型")
+    private String network;
+
+    @Comment("客户端坐标-纬度")
+    @Column(name = "lat")
+    @Schema(description = "客户端坐标-纬度")
+    private String lat;
+
+    @Comment("客户端坐标-经度")
+    @Column(name = "lng")
+    @Schema(description = "客户端坐标-经度")
+    private String lng;
+
+    @Comment("设备地理位置")
+    @Column(name = "location")
+    @Schema(description = "设备地理位置")
+    private String location;
+
+    @Comment("REWEB密码")
+    @Column(name = "passwd")
+    @Schema(description = "REWEB密码")
+    private String passwd;
+
+    @Column(length = 64)
     @Schema(
         description = "修改人ID"
         , accessMode = Schema.AccessMode.READ_ONLY
@@ -174,6 +256,36 @@ public class DeviceInstanceEntity extends GenericEntity<String> implements Recor
         , accessMode = Schema.AccessMode.READ_ONLY
     )
     private String modifierName;
+
+    @Column
+    @Schema(description = "最近上线时间")
+    private Long onlineTime;
+
+    @Column
+    @Schema(description = "最近离线时间")
+    private Long offlineTime;
+
+    @Column
+    @Schema(description = "运营商")
+    private String operator;
+
+    @Column
+    @Schema(description = "切卡状态 0手动 1自动")
+    @DefaultValue("0")
+    private String switchState;
+
+    @Column
+    @Schema(description = "是否同步 0未同步 1已同步")
+    @DefaultValue("0")
+    private String syncFlag;
+
+    @Column
+    @Schema(description = "服务器地址，最多三个")
+    private String pingAddr;
+
+    @Column
+    @Schema(description = "重试次数1-20")
+    private Integer pingRetry;
 
     public Optional<Object> getConfiguration(String key) {
         if (configuration == null) {

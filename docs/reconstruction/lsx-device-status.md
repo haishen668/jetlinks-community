@@ -125,11 +125,12 @@ Changed child POM parent versions from 2.1.0-SNAPSHOT to 2.1.1
 Replaced lsx-device/pom.xml with the pom.xml extracted from lsx-device.jar
 Copied jar resources into lsx-device/src/main/resources
 Removed resource files not present in the old jar from lsx-device
-Replaced raw jar credentials with environment placeholders
+Restored jar configuration resources into lsx-device/src/main/resources
 Aligned dependency versions until BOOT-INF/lib diff is zero
+Restored old jar custom source classes for auth, customer device, notify channel, upload config, alarm/device jobs, and scene action support
 ```
 
-These reconstruction changes have not been committed yet.
+The first reconstruction commit was already pushed. The current source-level alignment changes are pending commit.
 
 ## Current Verification
 
@@ -151,24 +152,50 @@ Result:
 BUILD SUCCESS
 ```
 
+Latest verified command time:
+
+```text
+2026-06-02 19:09 CST
+```
+
 Built artifact:
 
 ```text
 F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
 ```
 
-Alignment evidence:
+Outer package alignment evidence:
 
 ```text
 BOOT-INF/lib old=357 new=357 diff=0
-BOOT-INF/classes old=22 new=22 diff=0
+BOOT-INF/classes old=14 new=14 diff=0
 JetLinksApplication bytecode major version=52
 ```
 
-Intentional difference:
+Configuration alignment:
 
 ```text
-Raw jar credentials are not committed. Source uses LSX_* environment placeholders.
+lsx-device/src/main/resources/application.yml matches old jar application.yml by SHA-256.
+lsx-device/src/main/resources/application-wj.yml matches old jar application-wj.yml by SHA-256.
+The old production-sensitive values are present in source because production deployment will use this branch directly.
+Do not print or share the raw values in chat or documentation.
+```
+
+Nested module class-list audit:
+
+```text
+authentication-manager-2.1.1.jar old=70  new=72  missing-in-new=0  extra-in-new=2
+device-manager-2.1.1.jar        old=210 new=212 missing-in-new=0  extra-in-new=2
+rule-engine-manager-2.1.1.jar   old=128 new=151 missing-in-new=0  extra-in-new=23
+notify-manager-2.1.1.jar        old=43  new=69  missing-in-new=0  extra-in-new=26
+io-component-2.1.1.jar          old=32  new=32  missing-in-new=0  extra-in-new=0
+```
+
+Meaning:
+
+```text
+For the audited custom modules, every class present in the old jar is now present in the rebuilt new jar.
+The rebuilt jar still contains some extra upstream classes that are not in the old runtime jar.
 ```
 
 ## Jar Extraction Work Areas
@@ -212,17 +239,21 @@ application-wj.yml:
   tdengine.enabled: false
 ```
 
-Sensitive credentials are present in the jar configs. Treat extracted config files as local development evidence and do not publish raw secrets.
+Sensitive credentials are present in the jar configs and have now been restored into source resources for production parity.
+Treat these files as private repository material and do not publish raw secrets outside the private repo.
 
-## Immediate Next Decision
+## Immediate Next Step
 
-Before continuing implementation, decide whether to:
+Current branch direction:
 
 ```text
-Option A: Keep the global project version changed to 2.1.1 and rebuild all modules as the reconstructed private version.
-Option B: Keep public modules at 2.1.0-SNAPSHOT and make only lsx-device resolve against local/extracted 2.1.1 jars.
+Keep the global project version changed to 2.1.1 and rebuild all modules as the reconstructed private version.
 ```
 
-Recommended option: Option A.
+Remaining work before treating this as fully aligned:
 
-Reason: the runtime jar contains many internal modules at `2.1.1`, so a coherent private branch with all module versions set to `2.1.1` is easier to build, reason about, and modify.
+```text
+Commit and push the source-level alignment changes.
+Optionally run a runtime smoke test against the intended MySQL/Redis environment.
+Investigate whether extra upstream classes should be excluded only if strict byte-for-byte jar parity becomes required.
+```

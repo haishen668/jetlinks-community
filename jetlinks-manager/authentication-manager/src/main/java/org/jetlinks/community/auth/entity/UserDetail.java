@@ -15,6 +15,7 @@ import org.jetlinks.community.auth.enums.DefaultUserEntityType;
 import org.jetlinks.community.auth.enums.UserEntityType;
 import org.jetlinks.community.auth.enums.UserEntityTypes;
 import org.jetlinks.reactor.ql.utils.CastUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -57,6 +58,12 @@ public class UserDetail {
     @Schema(description = "创建时间")
     private long createTime;
 
+    @Schema(description = "创建人Id")
+    private String creatorId;
+
+    @Schema(description = "创建人")
+    private UserDetailEntity createUser;
+
     @Schema(description = "角色信息")
     private List<RoleInfo> roleList;
 
@@ -64,6 +71,9 @@ public class UserDetail {
     private List<OrganizationInfo> orgList;
 
     private boolean tenantDisabled;
+
+    @Schema(description = "创建人树结构")
+    private String treePath;
 
     public static UserDetail of(UserEntity entity) {
         return new UserDetail().with(entity);
@@ -74,7 +84,7 @@ public class UserDetail {
         this.setDescription(entity.getDescription());
         this.setTelephone(entity.getTelephone());
         this.setEmail(entity.getEmail());
-
+        this.setTreePath(entity.getTreePath());
         return this;
     }
 
@@ -83,6 +93,9 @@ public class UserDetail {
         this.setName(entity.getName());
         if (entity.getCreateTime() != null) {
             setCreateTime(entity.getCreateTime());
+        }
+        if (StringUtils.hasText(entity.getCreatorId())) {
+            this.setCreatorId(entity.getCreatorId());
         }
         this.setUsername(entity.getUsername());
         this.setStatus(entity.getStatus());
@@ -124,14 +137,16 @@ public class UserDetail {
         userEntity.setName(name);
         userEntity.setUsername(username);
         userEntity.setPassword(password);
-        // 默认设置类型为普通用户
         if (type == null && !username.equals("admin")) {
             userEntity.setType(DefaultUserEntityType.USER.getId());
+        }
+        if (StringUtils.hasText(creatorId)) {
+            userEntity.setCreatorId(creatorId);
         }
         return userEntity;
     }
 
-    public UserDetailEntity toDetailEntity(){
+    public UserDetailEntity toDetailEntity() {
         return FastBeanCopier.copy(this, new UserDetailEntity());
     }
 
@@ -150,5 +165,4 @@ public class UserDetail {
             .map(RoleInfo::getId)
             .collect(Collectors.toList());
     }
-
 }

@@ -11,19 +11,24 @@ import org.hswebframework.web.api.crud.entity.PagerResult;
 import org.hswebframework.web.api.crud.entity.QueryParamEntity;
 import org.hswebframework.web.crud.events.EntityDeletedEvent;
 import org.hswebframework.web.crud.events.EntityEventHelper;
+import org.hswebframework.web.crud.query.QueryHelper;
 import org.hswebframework.web.crud.service.GenericReactiveCrudService;
 import org.hswebframework.web.exception.BusinessException;
 import org.hswebframework.web.exception.I18nSupportException;
 import org.hswebframework.web.exception.TraceSourceException;
 import org.hswebframework.web.i18n.LocaleUtils;
 import org.hswebframework.web.id.IDGenerator;
+import org.hswebframework.web.system.authorization.api.service.reactive.ReactiveUserService;
 import org.jetlinks.community.device.entity.*;
 import org.jetlinks.community.device.enums.DeviceState;
 import org.jetlinks.community.device.events.DeviceDeployedEvent;
 import org.jetlinks.community.device.events.DeviceUnregisterEvent;
+import org.jetlinks.community.device.response.BaiduLbsResponse;
+import org.jetlinks.community.device.response.BaiduLocationPoint;
 import org.jetlinks.community.device.response.DeviceDeployResult;
 import org.jetlinks.community.device.response.DeviceDetail;
 import org.jetlinks.community.device.response.ResetDeviceConfigurationResult;
+import org.jetlinks.community.device.web.request.BatchUpdateDeviceRequest;
 import org.jetlinks.community.relation.RelationObjectProvider;
 import org.jetlinks.community.relation.service.RelationService;
 import org.jetlinks.community.relation.service.response.RelatedInfo;
@@ -51,10 +56,12 @@ import org.jetlinks.supports.official.JetLinksDeviceMetadataCodec;
 import org.reactivestreams.Publisher;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.redis.core.ReactiveRedisOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -77,13 +84,25 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
 
     private final ReactiveRepository<DeviceTagEntity, String> tagRepository;
 
+    private final ReactiveRepository<DeviceCardEntity, String> cardRepository;
+
     private final ApplicationEventPublisher eventPublisher;
 
     private final DeviceConfigMetadataManager metadataManager;
 
     private final RelationService relationService;
 
+    private final QueryHelper queryHelper;
+
     private final TransactionalOperator transactionalOperator;
+
+    private final ReactiveUserService userService;
+
+    private final ReactiveRedisOperations<String, String> redis;
+
+    private final WebClient webClient;
+
+    public static final String LOCATION_URL = "https://api.map.baidu.com/location/ip?ak=dsnehy3w4cXMigbVFCpXfwBx3tBZhGLK&coor=bd09ll&ip=";
 
     public LocalDeviceInstanceService(DeviceRegistry registry,
                                       LocalDeviceProductService deviceProductService,
@@ -92,7 +111,13 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                                       ApplicationEventPublisher eventPublisher,
                                       DeviceConfigMetadataManager metadataManager,
                                       RelationService relationService,
-                                      TransactionalOperator transactionalOperator) {
+                                      TransactionalOperator transactionalOperator,
+                                      QueryHelper queryHelper,
+                                      ReactiveUserService userService,
+                                      WebClient.Builder builder,
+                                      @SuppressWarnings("all")
+                                      ReactiveRepository<DeviceCardEntity, String> cardRepository,
+                                      ReactiveRedisOperations<String, String> redis) {
         this.registry = registry;
         this.deviceProductService = deviceProductService;
         this.tagRepository = tagRepository;
@@ -100,6 +125,11 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
         this.metadataManager = metadataManager;
         this.relationService = relationService;
         this.transactionalOperator = transactionalOperator;
+        this.queryHelper = queryHelper;
+        this.userService = userService;
+        this.webClient = builder.build();
+        this.cardRepository = cardRepository;
+        this.redis = redis;
     }
 
     @Override
@@ -920,6 +950,91 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             )
             .then();
 
+    }
+
+    public Flux<DeviceDeployResult> importDeploy(Flux<DeviceInstanceEntity> flux) {
+        return deploy(flux);
+    }
+
+    public Mono<BaiduLocationPoint> getClientLocation(String ip) {
+        return webClient
+            .get()
+            .uri(LOCATION_URL + ip)
+            .retrieve()
+            .bodyToMono(BaiduLbsResponse.class)
+            .defaultIfEmpty(new BaiduLbsResponse())
+            .map(response -> {
+                if (response.getStatus() != null
+                    && response.getStatus() == 0
+                    && response.getContent() != null
+                    && response.getContent().getPoint() != null) {
+                    return response.getContent().getPoint();
+                }
+                return new BaiduLocationPoint();
+            });
+    }
+
+    public Mono<Integer> batchUpdate(BatchUpdateDeviceRequest request) {
+        return getRepository()
+            .createUpdate()
+            .set(DeviceInstanceEntity::getUserId, request.getUserId())
+            .set(DeviceInstanceEntity::getDescribe, request.getDescribe())
+            .set(DeviceInstanceEntity::getModifierId, request.getModifyUserId())
+            .where()
+            .in("id", request.getIds())
+            .execute();
+    }
+
+    public Flux<DeviceInstanceEntity> queryCustomerDevices(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                " SELECT t.* FROM `dev_device_instance` t LEFT JOIN `s_user_detail` userDetail ON userDetail.`id`= t.user_id   LEFT JOIN `dev_device_card` deviceCard ON deviceCard.device_id=t.id AND deviceCard.use_state=1",
+                DeviceInstanceEntity::new)
+            .where(query)
+            .fetch();
+    }
+
+    public Mono<PagerResult<CustomerDevice>> queryCustomerDevice(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                " SELECT * FROM `dev_device_instance` t LEFT JOIN `s_user_detail` userDetail ON userDetail.`id`= t.user_id LEFT JOIN `dev_device_card` deviceCard ON deviceCard.device_id=t.id AND deviceCard.use_state=1",
+                CustomerDevice::new)
+            .where(query)
+            .fetchPaged()
+            .flatMap(page -> Flux
+                .fromIterable(page.getData())
+                .index()
+                .map(tuple -> CustomerDevice.of(tuple.getT2(), page.getPageSize() * page.getPageIndex() + tuple.getT1().intValue() + 1))
+                .collectList()
+                .map(list -> {
+                    page.setData(list);
+                    return page;
+                }));
+    }
+
+    public Flux<CustomerDevice> exportCustomerDevices(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                " SELECT * FROM `dev_device_instance` t LEFT JOIN `s_user_detail` userDetail ON userDetail.`id`= t.user_id LEFT JOIN `dev_device_card` deviceCard ON deviceCard.device_id=t.id AND deviceCard.use_state = 1 LEFT JOIN `dev_device_card` deviceCard1 ON deviceCard1.device_id=t.id AND deviceCard1.use_state = 0",
+                CustomerDevice::new)
+            .where(query)
+            .fetch();
+    }
+
+    public Mono<Integer> countCustomerDevice(QueryParamEntity query) {
+        return queryHelper
+            .select(" SELECT * FROM `dev_device_instance` t LEFT JOIN `s_user_detail` t1  ON t1.`id`= t.user_id  ")
+            .where(query)
+            .count();
+    }
+
+    public Mono<List<DevicePosition>> queryDevicePosition(String where) {
+        return queryHelper
+            .select(
+                " SELECT t.lng,t.lat,count(1) as num FROM `dev_device_instance` t LEFT JOIN `s_user_detail` ts  ON ts.`id`= t.user_id  where " + where + "and t.state='online' and t.lng is not null and t.lat is not null and t.lng !='' and t.lat !='' group by t.lng,t.lat",
+                DevicePosition::new)
+            .fetch()
+            .collectList();
     }
 
 }
