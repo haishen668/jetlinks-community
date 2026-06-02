@@ -14,4 +14,10 @@ public class DeviceStateInfo {
     private String deviceId;
 
     private DeviceState state;
+
+    private String address;
+
+    public static DeviceStateInfo of(String deviceId, DeviceState state) {
+        return of(deviceId, state, null);
+    }
 }

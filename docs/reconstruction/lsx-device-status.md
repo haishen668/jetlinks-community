@@ -128,9 +128,10 @@ Removed resource files not present in the old jar from lsx-device
 Restored jar configuration resources into lsx-device/src/main/resources
 Aligned dependency versions until BOOT-INF/lib diff is zero
 Restored old jar custom source classes for auth, customer device, notify channel, upload config, alarm/device jobs, and scene action support
+Aligned selected old jar member signatures for customer device deployment, device address sync, REWEB-related fields, customer device queries, and scene trigger metadata parsing
 ```
 
-The first reconstruction commit was already pushed. The current source-level alignment changes are pending commit.
+The reconstruction and source-level alignment commits are intended to be kept on the private `lsx-device-2.1.1` branch.
 
 ## Current Verification
 
@@ -155,7 +156,7 @@ BUILD SUCCESS
 Latest verified command time:
 
 ```text
-2026-06-02 19:09 CST
+2026-06-02 19:29 CST
 ```
 
 Built artifact:
@@ -164,11 +165,17 @@ Built artifact:
 F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
 ```
 
+Latest built artifact SHA-256:
+
+```text
+A9CD5C1AAB2BAA80355DE5DFDF7C269800C00A715F196B043B2C22D48E5FE3EA
+```
+
 Outer package alignment evidence:
 
 ```text
-BOOT-INF/lib old=357 new=357 diff=0
-BOOT-INF/classes old=14 new=14 diff=0
+BOOT-INF/lib old=357 new=357 missing=0 extra=0
+BOOT-INF/classes files old=14 new=14
 JetLinksApplication bytecode major version=52
 ```
 
@@ -196,6 +203,32 @@ Meaning:
 ```text
 For the audited custom modules, every class present in the old jar is now present in the rebuilt new jar.
 The rebuilt jar still contains some extra upstream classes that are not in the old runtime jar.
+```
+
+Selected member-signature audit:
+
+```text
+Audit method: javap -private on 27 selected custom classes.
+Compared: all fields plus non-private source-visible methods and constructors.
+Ignored: compiler-generated lambda$ and access$ bridge methods.
+Result: TOTAL missing-members=0 extra-members=8
+```
+
+Important classes covered:
+
+```text
+CustomerDetail, UserDetail, UserDetailEntity, UserDetailService, TermParseUtil, CustomerController
+CustomerDevice, DeviceCardEntity, DeviceInstanceEntity, DevicePosition, DeviceStateInfo, LocalDeviceInstanceService
+CustomerDeviceController, CustomerDeviceExcelImporter, CustomerDeviceExcelInfo, CustomerDeviceWrapper, BatchUpdateDeviceRequest
+AlarmHandleHistoryInfo, DeviceJob, DeviceJobLog, DeviceTrigger, SceneAction, DeviceJobService, DeviceJobController, AlarmHandleExcelInfo
+NotifyChannelEntity, UploadProperties
+```
+
+Meaning:
+
+```text
+For the selected custom classes audited from the old jar, no old field or non-private method signature is missing in the rebuilt jar.
+The remaining extra members are from the rebuilt source retaining additional upstream/compatibility members.
 ```
 
 ## Jar Extraction Work Areas
@@ -253,7 +286,6 @@ Keep the global project version changed to 2.1.1 and rebuild all modules as the 
 Remaining work before treating this as fully aligned:
 
 ```text
-Commit and push the source-level alignment changes.
 Optionally run a runtime smoke test against the intended MySQL/Redis environment.
 Investigate whether extra upstream classes should be excluded only if strict byte-for-byte jar parity becomes required.
 ```

@@ -23,6 +23,7 @@ import org.jetlinks.community.device.entity.*;
 import org.jetlinks.community.device.enums.DeviceState;
 import org.jetlinks.community.device.events.DeviceDeployedEvent;
 import org.jetlinks.community.device.events.DeviceUnregisterEvent;
+import org.jetlinks.community.device.response.AmapRegeoResponse;
 import org.jetlinks.community.device.response.BaiduLbsResponse;
 import org.jetlinks.community.device.response.BaiduLocationPoint;
 import org.jetlinks.community.device.response.DeviceDeployResult;
@@ -69,6 +70,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -100,9 +104,10 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
 
     private final ReactiveRedisOperations<String, String> redis;
 
-    private final WebClient webClient;
+    final WebClient webClient;
 
     public static final String LOCATION_URL = "https://api.map.baidu.com/location/ip?ak=dsnehy3w4cXMigbVFCpXfwBx3tBZhGLK&coor=bd09ll&ip=";
+    public static final String LNGLAT_URL = "https://restapi.amap.com/v3/geocode/regeo?output=json&key=96afd82022b530be97846ca5499378f7&radius=1000&extensions=base&location=";
 
     public LocalDeviceInstanceService(DeviceRegistry registry,
                                       LocalDeviceProductService deviceProductService,
@@ -151,6 +156,17 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                     .thenReturn(instance);
             })
             .as(super::save);
+    }
+
+    public Mono<SaveResult> update(DeviceInstanceEntity entityPublisher) {
+        return findById(entityPublisher.getId())
+            .flatMap(entity -> {
+                entity.setUserId(entityPublisher.getUserId());
+                entity.setDescribe(entityPublisher.getDescribe());
+                entity.setModifierId(entityPublisher.getModifierId());
+                entity.setModifierName(entityPublisher.getModifierName());
+                return Mono.just(entity).as(super::save);
+            });
     }
 
     private Flux<DeviceInstanceEntity> findByProductId(String productId) {
@@ -274,6 +290,10 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
      * @return 发布数量
      */
     public Flux<DeviceDeployResult> deploy(Flux<DeviceInstanceEntity> flux, Function<Throwable, Mono<Void>> fallback) {
+        return deploy(flux, fallback, false);
+    }
+
+    public Flux<DeviceDeployResult> deploy(Flux<DeviceInstanceEntity> flux, Function<Throwable, Mono<Void>> fallback, Boolean importFlag) {
         //设备回滚 key: deviceId value: 操作
         Map<String, Mono<Void>> rollback = new ConcurrentHashMap<>();
 
@@ -293,6 +313,10 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                     .checkState()//激活时检查设备状态
                     .onErrorReturn(org.jetlinks.core.device.DeviceState.offline)
                     .flatMap(r -> {
+                        if (Boolean.TRUE.equals(importFlag)) {
+                            instance.setState(DeviceState.notActive);
+                            return Mono.just(true);
+                        }
                         if (r.equals(org.jetlinks.core.device.DeviceState.unknown) ||
                             r.equals(org.jetlinks.core.device.DeviceState.noActive)) {
                             instance.setState(DeviceState.offline);
@@ -314,14 +338,19 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                 .flatMap(group -> group
                     .map(DeviceInstanceEntity::getId)
                     .collectList()
-                    .flatMap(list -> createUpdate()
-                        .where()
-                        .set(DeviceInstanceEntity::getState, group.key())
-                        .set(DeviceInstanceEntity::getRegistryTime, System.currentTimeMillis())
-                        .in(DeviceInstanceEntity::getId, list)
-                        .is(DeviceInstanceEntity::getState, DeviceState.notActive)
-                        .execute()
-                        .map(r -> DeviceDeployResult.success(list.size()))))
+                    .flatMap(list -> {
+                        if (Boolean.TRUE.equals(importFlag)) {
+                            return Mono.just(DeviceDeployResult.success(list.size()));
+                        }
+                        return createUpdate()
+                            .where()
+                            .set(DeviceInstanceEntity::getState, group.key())
+                            .set(DeviceInstanceEntity::getRegistryTime, System.currentTimeMillis())
+                            .in(DeviceInstanceEntity::getId, list)
+                            .is(DeviceInstanceEntity::getState, DeviceState.notActive)
+                            .execute()
+                            .map(r -> DeviceDeployResult.success(list.size()));
+                    }))
                 //推送激活事件
                 .flatMap(res -> DeviceDeployedEvent.of(all).publish(eventPublisher).thenReturn(res))
                 //传递国际化上下文
@@ -953,7 +982,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
     }
 
     public Flux<DeviceDeployResult> importDeploy(Flux<DeviceInstanceEntity> flux) {
-        return deploy(flux);
+        return deploy(flux, err -> Mono.empty(), true);
     }
 
     public Mono<BaiduLocationPoint> getClientLocation(String ip) {
@@ -974,6 +1003,81 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             });
     }
 
+    public Mono<Integer> getPort(String deviceId) {
+        return redis
+            .opsForValue()
+            .get(deviceId)
+            .flatMap(portStr -> {
+                Integer port = Integer.valueOf(portStr);
+                if (!checkPort(port)) {
+                    return Mono.just(port);
+                }
+                return getNewPort(deviceId);
+            })
+            .switchIfEmpty(getNewPort(deviceId));
+    }
+
+    public Mono<Integer> getNewPort(String mac) {
+        int port = new Random().nextInt(50000) + 10240;
+        if (!checkPort(port)) {
+            return redis.opsForValue().set(mac, String.valueOf(port)).thenReturn(port);
+        }
+        return getNewPort(mac);
+    }
+
+    public Boolean checkPort(Integer port) {
+        Socket socket = null;
+        boolean used = false;
+        try {
+            InetAddress address = InetAddress.getByName("127.0.0.1");
+            socket = new Socket(address, port);
+            used = true;
+        } catch (IOException ignore) {
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    log.warn("close port check socket error", e);
+                }
+            }
+        }
+        return used;
+    }
+
+    public Mono<String> getAmapLocation(String latLng) {
+        return webClient
+            .get()
+            .uri(LNGLAT_URL + latLng)
+            .retrieve()
+            .bodyToMono(AmapRegeoResponse.class)
+            .defaultIfEmpty(new AmapRegeoResponse())
+            .flatMap(response -> {
+                log.info(com.alibaba.fastjson.JSONObject.toJSONString(response));
+                if ("1".equals(response.getStatus())
+                    && "10000".equals(response.getInfocode())
+                    && response.getRegeocode() != null) {
+                    return Mono.justOrEmpty(response.getRegeocode().getFormatted_address()).defaultIfEmpty("");
+                }
+                return Mono.just("");
+            });
+    }
+
+    public Flux<List<DeviceStateInfo>> syncAddressBatch(List<DeviceStateInfo> batch) {
+        return Flux
+            .fromIterable(batch)
+            .flatMap(data -> getRepository()
+                .createUpdate()
+                .set(DeviceInstanceEntity::getAdress, data.getAddress())
+                .when(data.getState() == DeviceState.offline, update -> update.set("offline_time", System.currentTimeMillis()))
+                .when(data.getState() == DeviceState.online, update -> update.set("online_time", System.currentTimeMillis()))
+                .where(DeviceInstanceEntity::getId, data.getDeviceId())
+                .execute()
+                .thenReturn(data))
+            .then(Mono.just(batch))
+            .flux();
+    }
+
     public Mono<Integer> batchUpdate(BatchUpdateDeviceRequest request) {
         return getRepository()
             .createUpdate()
@@ -983,6 +1087,13 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .where()
             .in("id", request.getIds())
             .execute();
+    }
+
+    public Mono<Integer> checkCustomerDevice(QueryParamEntity query) {
+        return queryHelper
+            .select(" SELECT * FROM `dev_device_instance` t INNER JOIN `s_user_detail` t1  ON t1.`id`= t.user_id  ")
+            .where(query)
+            .count();
     }
 
     public Flux<DeviceInstanceEntity> queryCustomerDevices(QueryParamEntity query) {
@@ -1026,6 +1137,15 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .select(" SELECT * FROM `dev_device_instance` t LEFT JOIN `s_user_detail` t1  ON t1.`id`= t.user_id  ")
             .where(query)
             .count();
+    }
+
+    public Mono<PagerResult<CustomerDevice>> queryDevice(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                " SELECT * FROM `dev_device_instance` t LEFT JOIN `s_user_detail` userDetail  ON userDetail.`id`= t.user_id  ",
+                CustomerDevice::new)
+            .where(query)
+            .fetchPaged();
     }
 
     public Mono<List<DevicePosition>> queryDevicePosition(String where) {

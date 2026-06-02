@@ -91,6 +91,38 @@ Scope:
 authentication-manager, device-manager, notify-manager, rule-engine-manager, and io-component all compiled from source.
 ```
 
+### Final Source-Level Maven Package
+
+Command:
+
+```text
+.\mvnw.cmd -pl lsx-device -am -DskipTests clean package
+```
+
+Environment:
+
+```text
+JAVA_HOME=C:\Users\Administrator\.jdks\corretto-1.8.0_412
+```
+
+Result:
+
+```text
+BUILD SUCCESS at 2026-06-02 19:29 CST
+```
+
+Artifact:
+
+```text
+F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
+```
+
+Artifact SHA-256:
+
+```text
+A9CD5C1AAB2BAA80355DE5DFDF7C269800C00A715F196B043B2C22D48E5FE3EA
+```
+
 ### Jar Alignment Checks
 
 Commands compared old jar and rebuilt jar:
@@ -103,8 +135,8 @@ new: F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.j
 Results:
 
 ```text
-BOOT-INF/lib old=357 new=357 diff=0
-BOOT-INF/classes old=14 new=14 diff=0
+BOOT-INF/lib old=357 new=357 missing=0 extra=0
+BOOT-INF/classes files old=14 new=14
 org.jetlinks.community.standalone.JetLinksApplication major version=52
 ```
 
@@ -124,6 +156,25 @@ device-manager-2.1.1.jar        old=210 new=212 missing-in-new=0  extra-in-new=2
 rule-engine-manager-2.1.1.jar   old=128 new=151 missing-in-new=0  extra-in-new=23
 notify-manager-2.1.1.jar        old=43  new=69  missing-in-new=0  extra-in-new=26
 io-component-2.1.1.jar          old=32  new=32  missing-in-new=0  extra-in-new=0
+```
+
+Selected member-signature audit:
+
+```text
+Audit method: javap -private on 27 selected custom classes.
+Compared: all fields plus non-private source-visible methods and constructors.
+Ignored: compiler-generated lambda$ and access$ bridge methods.
+Result: TOTAL missing-members=0 extra-members=8
+```
+
+Classes covered:
+
+```text
+CustomerDetail, UserDetail, UserDetailEntity, UserDetailService, TermParseUtil, CustomerController
+CustomerDevice, DeviceCardEntity, DeviceInstanceEntity, DevicePosition, DeviceStateInfo, LocalDeviceInstanceService
+CustomerDeviceController, CustomerDeviceExcelImporter, CustomerDeviceExcelInfo, CustomerDeviceWrapper, BatchUpdateDeviceRequest
+AlarmHandleHistoryInfo, DeviceJob, DeviceJobLog, DeviceTrigger, SceneAction, DeviceJobService, DeviceJobController, AlarmHandleExcelInfo
+NotifyChannelEntity, UploadProperties
 ```
 
 ## Jar vs Source Differences
@@ -178,6 +229,8 @@ Action:
 Added/restored custom classes under authentication-manager, device-manager, rule-engine-manager, notify-manager, and io-component.
 Repaired CFR-decompiled generics/default-method issues so the source builds cleanly on JDK 8.
 Verified no audited old custom module class is missing from the rebuilt nested jars.
+Patched second-pass signature gaps found by javap: DeviceStateInfo.address/of overload, LocalDeviceInstanceService update/import deploy/port/address/customer query methods, CustomerDeviceController.bufferFactory field visibility, and DeviceTrigger.parseTermColumns signature.
+Verified no selected old custom field or non-private method signature is missing from the rebuilt nested jars.
 ```
 
 ### Startup Classes

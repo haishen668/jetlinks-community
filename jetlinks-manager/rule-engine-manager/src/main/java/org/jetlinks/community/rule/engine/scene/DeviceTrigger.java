@@ -360,10 +360,10 @@ implements SceneTriggerProvider.TriggerConfig, Serializable {
         if (!StringUtils.hasText((String)this.productId)) {
             return Flux.empty();
         }
-        return (Flux)this.getDeviceMetadata((ThingsRegistry)registry, this.productId).as(this::parseTermColumns);
+        return (Flux)this.getDeviceMetadata((ThingsRegistry)registry, this.productId).cast(DeviceMetadata.class).as(this::parseTermColumns);
     }
 
-    public Flux<TermColumn> parseTermColumns(Mono<? extends ThingMetadata> metadataMono) {
+    public Flux<TermColumn> parseTermColumns(Mono<DeviceMetadata> metadataMono) {
         if (this.operation == null) {
             return Flux.empty();
         }

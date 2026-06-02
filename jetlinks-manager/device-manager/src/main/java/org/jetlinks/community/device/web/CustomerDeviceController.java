@@ -88,7 +88,7 @@ public class CustomerDeviceController {
     private final ImportExportService importExportService;
     private final ReactiveRepository<DeviceCardEntity, String> cardRepository;
     private final TransactionalOperator transactionalOperator;
-    private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+    DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
     CustomerDeviceController(LocalDeviceInstanceService localDeviceInstanceService,
                              UserDetailService userDetailService,
