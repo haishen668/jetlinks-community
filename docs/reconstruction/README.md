@@ -24,7 +24,7 @@
 
 ## 当前可运行基准
 
-后端：
+2.1.1 后端：
 
 - 仓库：`F:\project\other\jetlinks\jetlinks-community`
 - 分支：`lsx-device-2.1.1`
@@ -33,12 +33,29 @@
 - HTTP：`8848`
 - MQTT：`1883`
 - JDK：`C:\Users\Administrator\.jdks\corretto-1.8.0_412`
+- 当前状态：已停止，需要对照老功能时再启动
 
-前端：
+2.1.1 前端：
 
 - 仓库：`F:\project\other\jetlinks\jetlinks-ui-vue-2.1.1`
 - 分支：`lsx-ui-2.1.1-recovery`
 - 访问：`http://127.0.0.1:5173/index.html`
+
+2.11 后端迁移基线：
+
+- 仓库：`F:\project\other\jetlinks\worktrees\jetlinks-community-lsx-migration-2.11`
+- 分支：`lsx-migration-2.11`
+- JDK：`C:\Users\Administrator\.jdks\corretto-21.0.3`
+- HTTP：`18848`
+- Health：`http://127.0.0.1:18848/actuator/health`
+- 数据库：云端 PostgreSQL/TimescaleDB 独立库 `jetlinks_211_migration`
+- 当前状态：已启动，`{"status":"UP"}`
+
+2.11 前端迁移基线：
+
+- 仓库：`F:\project\other\jetlinks\worktrees\jetlinks-ui-vue-lsx-ui-migration-2.11`
+- 分支：`lsx-ui-migration-2.11`
+- 构建：已通过 `pnpm run build`
 
 本地数据库：
 
@@ -153,9 +170,8 @@
 
 ## 下一步
 
-1. 提交或 tag 当前 2.1.1 后端和前端状态。
-2. 重新导出当前最小 MySQL 库。
-3. 新建 2.11 独立迁移分支和独立数据库。
-4. 先跑通 2.11 原生环境。
-5. 从设备详情字段和属性上报同步开始迁移。
-6. 再迁客户设备、REWEB、设备任务、告警场景。
+1. 从设备详情字段和属性上报同步开始迁移。
+2. 在 2.11 独立库中创建一台测试设备和对应产品，先验证基础设备模型。
+3. 对照 2.1.1 的真实设备 `869624060285951`，迁移老 jar 私有字段、属性同步和 MQTT/网关差异。
+4. 再迁客户设备、REWEB、设备任务、告警场景。
+5. 每迁一个模块，都要补充 2.11 验证证据到 `2.11-migration-worktrees-20260603.md` 或对应模块文档。
