@@ -274,6 +274,17 @@ npm init -y
 npm i mysql2 pg dotenv
 ```
 
+本仓库已提供可复制的脚本样板：
+
+```text
+docs/reconstruction/migration-scripts/.env.example
+docs/reconstruction/migration-scripts/inventory.mjs
+docs/reconstruction/migration-scripts/migrate-device-master-data.mjs
+docs/reconstruction/migration-scripts/README.md
+```
+
+推荐先把这些脚本复制到 `F:\project\other\jetlinks\runtime\migration-tools`，再编辑 `.env` 执行。这样脚本运行产物和本地密码不会进入 Git。
+
 `.env` 示例：
 
 ```dotenv
@@ -644,4 +655,3 @@ pg_restore -h 49.234.53.230 -p 5433 -U postgres -d jetlinks_211_migration --clea
 5. 再跑 `dev_device_instance` 和 `dev_device_card` 的 dry-run。
 6. 用设备 `869624060285951` 做详情页和 SQL 校验。
 7. 确认后再进入客户设备、任务、REWEB、规则配置模块。
-
