@@ -5,11 +5,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.ezorm.rdb.mapping.ReactiveRepository;
 import org.jetlinks.community.PropertyConstants;
 import org.jetlinks.community.buffer.PersistenceBuffer;
 import org.jetlinks.community.configure.cluster.Cluster;
+import org.jetlinks.community.device.entity.DeviceCardEntity;
 import org.jetlinks.community.device.entity.DeviceInstanceEntity;
 import org.jetlinks.community.device.entity.DeviceTagEntity;
 import org.jetlinks.community.device.enums.DeviceFeature;
@@ -22,12 +25,14 @@ import org.jetlinks.core.device.DeviceRegistry;
 import org.jetlinks.core.event.EventBus;
 import org.jetlinks.core.event.Subscription;
 import org.jetlinks.core.message.*;
+import org.jetlinks.core.message.property.ReportPropertyMessage;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.FluxUtils;
 import org.jetlinks.core.utils.Reactors;
 import org.jetlinks.reactor.ql.utils.CastUtils;
 import org.jetlinks.supports.official.JetLinksDeviceMetadataCodec;
 import org.springframework.dao.QueryTimeoutException;
+import org.springframework.data.redis.core.ReactiveRedisOperations;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +54,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 @Component
@@ -64,7 +70,11 @@ public class DeviceMessageBusinessHandler {
 
     private final ReactiveRepository<DeviceTagEntity, String> tagRepository;
 
+    private final ReactiveRepository<DeviceCardEntity, String> cardRepository;
+
     private final EventBus eventBus;
+
+    private final ReactiveRedisOperations<String, String> redis;
 
     private final Disposable.Composite disposable = Disposables.composite();
 
@@ -264,6 +274,167 @@ public class DeviceMessageBusinessHandler {
                 }))
             .as(tagRepository::save)
             .then();
+    }
+
+    @Subscribe({"/device/*/*/message/property/report", "device/*/*/message/property/report"})
+    public Mono<Void> upgradeDeviceProperty(DeviceMessage message) {
+        if (!(message instanceof ReportPropertyMessage)) {
+            return Mono.empty();
+        }
+        String key = message.getDeviceId() + "_prop";
+        long timestamp = ((ReportPropertyMessage) message).getTimestamp();
+
+        Mono<Void> update = deviceService
+            .findById(message.getDeviceId())
+            .flatMap(device -> {
+                JSONObject json = message.toJson();
+                JSONObject propJson = json.getJSONObject("properties");
+                if (propJson == null) {
+                    return Mono.empty();
+                }
+                log.info("device property report: {}", propJson.toJSONString());
+
+                DeviceInstanceEntity deviceEntity = JSONObject.parseObject(propJson.toJSONString(), DeviceInstanceEntity.class);
+                Mono<Void> cardUpdate = syncDeviceCard(device.getId(), propJson);
+
+                if (!hasText(deviceEntity.getMac())) {
+                    deviceEntity.setMac(device.getMac());
+                }
+                if (!hasText(deviceEntity.getImei())) {
+                    deviceEntity.setImei(device.getImei());
+                }
+                if (!hasText(deviceEntity.getOperator())) {
+                    deviceEntity.setOperator(device.getOperator());
+                }
+
+                Mono<String> locationUpdate = resolveReportLocation(device, deviceEntity, propJson);
+                applyRewebAndPingConfig(device, deviceEntity, propJson);
+                deviceEntity.setModifyTime(System.currentTimeMillis());
+
+                return locationUpdate
+                    .doOnNext(deviceEntity::setLocation)
+                    .then(syncPingConfigState(device, deviceEntity, propJson))
+                    .then(deviceService.updateById(device.getId(), deviceEntity))
+                    .then(cardUpdate);
+            });
+
+        return redis
+            .opsForValue()
+            .get(key)
+            .defaultIfEmpty("")
+            .flatMap(deviceMsg -> {
+                if (!hasText(deviceMsg)) {
+                    return update;
+                }
+                JSONObject jsonObj = JSON.parseObject(deviceMsg);
+                Long lastTimestamp = jsonObj.getLong("timestamp");
+                if (lastTimestamp == null || timestamp - lastTimestamp >= 60000L || Objects.equals(lastTimestamp, timestamp)) {
+                    return update;
+                }
+                return Mono.empty();
+            });
+    }
+
+    private Mono<Void> syncDeviceCard(String deviceId, JSONObject propJson) {
+        String iccid = propJson.getString("iccid");
+        if (!hasText(iccid) || iccid.length() <= 10) {
+            return Mono.empty();
+        }
+
+        DeviceCardEntity cardEntity = new DeviceCardEntity();
+        cardEntity.setIccid(iccid);
+        cardEntity.setSlot(propJson.getInteger("slot"));
+        cardEntity.setDeviceId(deviceId);
+        cardEntity.setUseState(1);
+
+        return cardRepository
+            .createQuery()
+            .where(DeviceCardEntity::getDeviceId, deviceId)
+            .and(DeviceCardEntity::getIccid, cardEntity.getIccid())
+            .fetchOne()
+            .flatMap(card -> cardRepository.updateById(card.getId(), cardEntity))
+            .switchIfEmpty(Mono.defer(() -> cardRepository.insert(cardEntity)))
+            .then(cardRepository
+                      .createUpdate()
+                      .set(DeviceCardEntity::getUseState, 0)
+                      .where(DeviceCardEntity::getDeviceId, deviceId)
+                      .not(DeviceCardEntity::getIccid, cardEntity.getIccid())
+                      .execute())
+            .then();
+    }
+
+    private Mono<String> resolveReportLocation(DeviceInstanceEntity device,
+                                               DeviceInstanceEntity deviceEntity,
+                                               JSONObject propJson) {
+        String gpsloc = propJson.getString("gpsloc");
+        if (!hasText(gpsloc)) {
+            return Mono.empty();
+        }
+        String[] arr = gpsloc.split(",");
+        if (arr.length <= 3 || !hasText(arr[1]) || !hasText(arr[2])) {
+            return Mono.empty();
+        }
+
+        deviceEntity.setLng(arr[2]);
+        deviceEntity.setLat(arr[1]);
+        if (!Objects.equals(device.getLat(), arr[1])
+            || !Objects.equals(device.getLng(), arr[2])
+            || !hasText(device.getLocation())) {
+            return deviceService.getAmapLocation(arr[2] + "," + arr[1]);
+        }
+        return Mono.empty();
+    }
+
+    private void applyRewebAndPingConfig(DeviceInstanceEntity device,
+                                         DeviceInstanceEntity deviceEntity,
+                                         JSONObject propJson) {
+        String webpwd = propJson.getString("webpwd");
+        if (hasText(webpwd)) {
+            deviceEntity.setPasswd(webpwd);
+        }
+
+        String switchState = propJson.getString("switch_state");
+        String pingAddr = propJson.getString("ping_addr");
+        Integer pingRetry = propJson.getInteger("ping_retry");
+
+        if (hasText(switchState)) {
+            deviceEntity.setSwitchState(switchState);
+        }
+        if (hasText(pingAddr)) {
+            deviceEntity.setPingAddr(pingAddr);
+        }
+        if (pingRetry != null) {
+            deviceEntity.setPingRetry(pingRetry);
+        }
+    }
+
+    private Mono<Void> syncPingConfigState(DeviceInstanceEntity device,
+                                           DeviceInstanceEntity deviceEntity,
+                                           JSONObject propJson) {
+        String switchState = propJson.getString("switch_state");
+        String pingAddr = propJson.getString("ping_addr");
+        Integer pingRetry = propJson.getInteger("ping_retry");
+        if (!hasText(switchState) || (!hasText(pingAddr) && pingRetry == null)) {
+            return Mono.empty();
+        }
+
+        return deviceService
+            .findById(device.getId())
+            .doOnNext(current -> {
+                if (Objects.equals(switchState, "0") && Objects.equals(current.getSwitchState(), "0")) {
+                    deviceEntity.setSyncFlag("1");
+                } else if (Objects.equals(switchState, "1")
+                    && Objects.equals(current.getSwitchState(), "1")
+                    && Objects.equals(pingAddr, current.getPingAddr())
+                    && Objects.equals(pingRetry, current.getPingRetry())) {
+                    deviceEntity.setSyncFlag("1");
+                }
+            })
+            .then();
+    }
+
+    private boolean hasText(String text) {
+        return text != null && !text.trim().isEmpty();
     }
 
     @Subscribe("/device/*/*/metadata/derived")

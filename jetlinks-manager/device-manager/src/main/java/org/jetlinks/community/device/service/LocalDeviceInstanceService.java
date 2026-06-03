@@ -7,6 +7,7 @@ import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.ezorm.rdb.mapping.ReactiveRepository;
 import org.hswebframework.ezorm.rdb.mapping.ReactiveUpdate;
 import org.hswebframework.ezorm.rdb.mapping.defaults.SaveResult;
+import org.hswebframework.ezorm.rdb.operator.dml.query.SortOrder;
 import org.hswebframework.web.api.crud.entity.PagerResult;
 import org.hswebframework.web.api.crud.entity.QueryParamEntity;
 import org.hswebframework.web.crud.events.EntityDeletedEvent;
@@ -485,6 +486,17 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .defaultIfEmpty(Collections.emptyMap());
     }
 
+    private Mono<Map<String, List<DeviceCardEntity>>> queryDeviceCardsGroup(Collection<String> deviceIdList) {
+        return cardRepository
+            .createQuery()
+            .where()
+            .in(DeviceCardEntity::getDeviceId, deviceIdList)
+            .orderBy(SortOrder.desc("slot"), SortOrder.desc("modify_time"))
+            .fetch()
+            .collect(Collectors.groupingBy(DeviceCardEntity::getDeviceId))
+            .defaultIfEmpty(Collections.emptyMap());
+    }
+
     private Flux<DeviceDetail> convertDeviceInstanceToDetail(List<DeviceInstanceEntity> instanceList,
                                                              boolean includeTag,
                                                              boolean includeBinds,
@@ -511,6 +523,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .defaultIfEmpty(Collections.emptyMap())
             : Mono.just(Collections.emptyMap());
 
+        Mono<Map<String, List<DeviceCardEntity>>> cards = this.queryDeviceCardsGroup(deviceIdList);
 
         return Mono
             .zip(
@@ -521,7 +534,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                 //T2:查询出标签并按设备ID分组
                 tags,
                 //T3: 关系信息
-                relations
+                relations,
+                cards
             )
             .flatMapMany(tp5 -> Flux
                 //遍历设备,将设备信息转为详情.
@@ -536,6 +550,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                         , tp5.getT2().get(instance.getId())
                         //关系信息
                         , tp5.getT3().get(instance.getId())
+                        , tp5.getT4().getOrDefault(instance.getId(), Collections.emptyList())
                     )
                 ))
             //createDeviceDetail是异步操作,可能导致顺序错乱.进行重新排序.
@@ -546,7 +561,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
     private Mono<DeviceDetail> createDeviceDetail(DeviceInstanceEntity device,
                                                   DeviceProductEntity product,
                                                   List<DeviceTagEntity> tags,
-                                                  List<RelatedInfo> relations) {
+                                                  List<RelatedInfo> relations,
+                                                  List<DeviceCardEntity> cards) {
         if (product == null) {
             log.warn("device [{}] product [{}] does not exists", device.getId(), device.getProductId());
             return Mono.empty();
@@ -555,7 +571,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .with(product)
             .with(device)
             .with(tags)
-            .withRelation(relations);
+            .withRelation(relations)
+            .withCards(cards);
 
         return Mono
             .zip(
@@ -572,6 +589,9 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                 //填充注册中心里的产品信息
                 return detail.with(t2.getT1());
             })
+            .then(getPort(detail.getId())
+                      .map(detail::withPort)
+                      .thenReturn(detail))
             .then(Mono.zip(
                 //设备信息
                 registry

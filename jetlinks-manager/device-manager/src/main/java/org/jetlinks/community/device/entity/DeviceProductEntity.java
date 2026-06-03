@@ -88,6 +88,10 @@ public class DeviceProductEntity extends GenericEntity<String> implements Record
     @Schema(description = "所属品类名称")
     private String classifiedName;
 
+    @Column
+    @Schema(description = "Brand")
+    private String brand;
+
     @Column(name = "message_protocol")
     @Length(min = 1, max = 256, groups = {
         CreateGroup.class, UpdateGroup.class

@@ -3,7 +3,9 @@ package org.jetlinks.community.device.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.jetlinks.community.device.entity.DeviceCardEntity;
 import org.jetlinks.community.device.entity.DeviceInstanceEntity;
 import org.jetlinks.community.device.entity.DeviceProductEntity;
 import org.jetlinks.community.device.entity.DeviceTagEntity;
@@ -63,6 +65,21 @@ public class DeviceDetail {
     @Schema(description = "机构名称")
     private String orgName;
 
+    @Schema(description = "User ID")
+    private String userId;
+
+    @Schema(description = "Real name")
+    private String realName;
+
+    @Schema(description = "Username")
+    private String username;
+
+    @Schema(description = "Firmware version")
+    private String firmwareVersion;
+
+    @Schema(description = "MAC")
+    private String mac;
+
     //产品ID
     @Schema(description = "产品ID")
     private String productId;
@@ -82,6 +99,27 @@ public class DeviceDetail {
     //客户端地址 /id:port
     @Schema(description = "ip地址")
     private String address;
+
+    @Schema(description = "IMEI")
+    private String imei;
+
+    @Schema(description = "2.4G terminal count")
+    private Integer t24gNum;
+
+    @Schema(description = "5G terminal count")
+    private Integer t5gNum;
+
+    @Schema(description = "RSRP")
+    private String rsrp;
+
+    @Schema(description = "RSRQ")
+    private String rsrq;
+
+    @Schema(description = "SINR")
+    private String sinr;
+
+    @Schema(description = "Network")
+    private String network;
 
     //上线时间
     @Schema(description = "上线时间")
@@ -154,6 +192,48 @@ public class DeviceDetail {
 
     @Schema(description = "产品所属品类名称")
     private String classifiedName;
+
+    @Schema(description = "Brand")
+    private String brand;
+
+    @Schema(description = "Model")
+    private String model;
+
+    @Schema(description = "REWEB port")
+    private Integer port;
+
+    @Schema(description = "REWEB sub-domain")
+    private String subDomain;
+
+    @Schema(description = "Latitude")
+    private String lat;
+
+    @Schema(description = "Longitude")
+    private String lng;
+
+    @Schema(description = "Location")
+    private String location;
+
+    @Schema(description = "REWEB password")
+    private String passwd;
+
+    @Schema(description = "Operator")
+    private String operator;
+
+    @Schema(description = "SIM switch state, 0 manual, 1 automatic")
+    private String switchState;
+
+    @Schema(description = "Sync flag, 0 unsynced, 1 synced")
+    private String syncFlag;
+
+    @Schema(description = "Ping address")
+    private String pingAddr;
+
+    @Schema(description = "Ping retry")
+    private Integer pingRetry;
+
+    @Schema(description = "Device cards")
+    private List<DeviceCardEntity> cards = new ArrayList<>();
 
 
 
@@ -288,6 +368,16 @@ public class DeviceDetail {
         return this;
     }
 
+    public DeviceDetail withCards(List<DeviceCardEntity> cards) {
+        this.cards = cards;
+        return this;
+    }
+
+    public DeviceDetail withPort(Integer port) {
+        this.port = port;
+        return this;
+    }
+
     public DeviceDetail with(DeviceProductEntity productEntity) {
         if (productEntity == null) {
             return this;
@@ -308,19 +398,59 @@ public class DeviceDetail {
         setAccessName(productEntity.getAccessName());
         setClassifiedId(productEntity.getClassifiedId());
         setClassifiedName(productEntity.getClassifiedName());
+        setBrand(productEntity.getBrand());
         return this;
     }
 
     public DeviceDetail with(DeviceInstanceEntity device) {
 
         setId(device.getId());
+        setModel(device.getModel());
         setName(device.getName());
         setState(device.getState());
+        setOrgId(device.getOrgId());
         setParentId(device.getParentId());
         setDescription(device.getDescribe());
+        setUserId(device.getUserId());
+        setNetwork(device.getNetwork());
+        setRsrp(device.getRsrp());
+        setRsrq(device.getRsrq());
+        setImei(device.getImei());
+        setMac(device.getMac());
+        setFirmwareVersion(device.getFirmwareVersion());
+        setSinr(device.getSinr());
+        setT24gNum(device.getT24gNum());
+        setT5gNum(device.getT5gNum());
+        setAddress(device.getAdress());
+        setOperator(device.getOperator());
+        setSwitchState(device.getSwitchState());
+        setSyncFlag(device.getSyncFlag());
+        setPingAddr(device.getPingAddr());
+        setPingRetry(device.getPingRetry());
+        if (StringUtils.hasText(device.getMac())) {
+            setSubDomain(DigestUtils.md5Hex(device.getMac()));
+        }
         if (device.getFeatures() != null) {
             withFeatures(Arrays.asList(device.getFeatures()));
         }
+        Optional.ofNullable(device.getOnlineTime())
+                .ifPresent(this::setOnlineTime);
+
+        Optional.ofNullable(device.getOfflineTime())
+                .ifPresent(this::setOfflineTime);
+
+        Optional.ofNullable(device.getLat())
+                .ifPresent(this::setLat);
+
+        Optional.ofNullable(device.getLng())
+                .ifPresent(this::setLng);
+
+        Optional.ofNullable(device.getLocation())
+                .ifPresent(this::setLocation);
+
+        Optional.ofNullable(device.getPasswd())
+                .ifPresent(this::setPasswd);
+
         Optional.ofNullable(device.getRegistryTime())
                 .ifPresent(this::setRegisterTime);
 
