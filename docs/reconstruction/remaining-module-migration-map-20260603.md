@@ -23,7 +23,7 @@
 | 模块 | 老后端证据 | 老前端/API 证据 | 2.11 当前状态 |
 | --- | --- | --- | --- |
 | 客户 | `CustomerController @RequestMapping("/customer")` | `/customer/**` | 2.11 后端最小接口已迁 |
-| 客户设备 | `CustomerDeviceController @RequestMapping("/customer/device")` | `/customer/device/**` | 待迁移 |
+| 客户设备 | `CustomerDeviceController @RequestMapping("/customer/device")` | `/customer/device/**` | 2.11 后端最小接口已迁，前端页面待迁 |
 | 设备任务 | `DeviceJobController @RequestMapping("/deviceJob")`、`DeviceJob @Table("dev_device_job")` | `/deviceJob/**` | 待迁移 |
 | REWEB | 标准设备功能接口 `POST /device/instance/{deviceId}/function/reweb` | 设备详情按钮打开 `http://{subDomain}.reweb.wugee.net.cn` | 后端标准接口已具备，前端 2.11 已补最小入口 |
 | 物联网卡页面 | 前端存在 `/network/card/**` 调用 | 后端未找到匹配 Controller | 先不迁，除非找到额外后端证据 |
@@ -83,12 +83,23 @@ left join dev_device_card deviceCard on deviceCard.device_id = t.id and deviceCa
 - 前端客户设备列表/详情/导入/导出页面
 - 数据迁移脚本中的 `user_id` 字段映射
 
-当前 2.11 已开始补 `user_id`：
+当前 2.11 已完成后端最小迁移：
 
 - `DeviceInstanceEntity.userId` 映射 `dev_device_instance.user_id`。
 - `migrate-device-master-data.mjs` 已把老库 `user_id/userId` 映射到目标 `user_id`。
+- `CustomerDevice` 已恢复为客户设备查询响应对象，继承 `DeviceInstanceEntity`，并携带客户信息、当前卡信息和列表序号。
+- `DevicePosition` 已恢复为在线设备地图点位统计响应对象。
+- `BatchUpdateDeviceRequest` 已恢复，用于客户设备批量修改所属客户、描述和修改人。
+- `LocalDeviceInstanceService` 已恢复客户设备分页查询、计数、批量更新、在线点位统计的最小服务方法。
+- `CustomerDeviceController` 已恢复 `/customer/device/**` 主要入口：`_query`、`_count`、`_add`、`_update`、`batchUpdate`、`queryPosition`、`getLocation`、`syncState`、`deployAll`、模板下载、导出。
+- 已补 `CustomerDeviceModuleContractTest`，用反射锁定老接口路径、请求方法和关键实体契约。
 
-后续客户设备 Controller 迁移时，应继续复用这条关系。
+仍待补齐：
+
+- 导入、模板下载、导出的 Excel 细节目前只是保留路由入口，待前端页面和真实数据格式确认后再补完整实现。
+- `getLocation` 目前只保留客户端 IP 返回；老版本的百度定位服务在 2.11 中还没有找到等价依赖，待页面真实需要时再补。
+- 客户设备页面还没有迁到 2.11 前端。
+- 还没有用真实 PostgreSQL 数据冒烟验证 `/customer/device/**`。
 
 ### 设备任务
 
@@ -176,9 +187,10 @@ docs/reconstruction/patches/0001-feat-add-lsx-reweb-action.patch
 ### 后端
 
 1. 用真实 PostgreSQL 数据验证 `/customer/**` 查询和保存接口。
-2. 从 2.1.1 迁 `CustomerDeviceController`，优先保留查询、详情、统计、批量更新。
-3. 从 2.1.1 迁 `DeviceJob`、`DeviceJobController`、`DeviceJobService`，先验证 2.11 规则引擎 API 差异。
-4. 补单元测试或 slice 测试，至少覆盖客户设备查询条件和设备任务实体序列化。
+2. 用真实 PostgreSQL 数据验证 `/customer/device/_query`、`/customer/device/_count`、`/customer/device/queryPosition`、`/customer/device/batchUpdate`。
+3. 等前端客户设备页面迁移时，按页面实际需要补完整导入、模板下载、导出和 `getLocation` 定位实现。
+4. 从 2.1.1 迁 `DeviceJob`、`DeviceJobController`、`DeviceJobService`，先验证 2.11 规则引擎 API 差异。
+5. 补设备任务实体序列化和服务契约测试。
 
 ### 前端
 

@@ -27,6 +27,7 @@ import org.hswebframework.web.api.crud.entity.QueryParamEntity;
 import org.hswebframework.web.api.crud.entity.TransactionManagers;
 import org.hswebframework.web.crud.events.EntityDeletedEvent;
 import org.hswebframework.web.crud.events.EntityEventHelper;
+import org.hswebframework.web.crud.query.QueryHelper;
 import org.hswebframework.web.crud.service.GenericReactiveCrudService;
 import org.hswebframework.web.exception.BusinessException;
 import org.hswebframework.web.exception.I18nSupportException;
@@ -60,6 +61,7 @@ import org.jetlinks.community.device.enums.DeviceState;
 import org.jetlinks.community.device.events.DeviceDeployedEvent;
 import org.jetlinks.community.device.events.DeviceUnregisterEvent;
 import org.jetlinks.community.device.web.response.DeviceDeployResult;
+import org.jetlinks.community.device.web.request.BatchUpdateDeviceRequest;
 import org.jetlinks.community.relation.RelationObjectProvider;
 import org.jetlinks.community.relation.service.RelationService;
 import org.jetlinks.community.relation.service.response.RelatedInfo;
@@ -110,6 +112,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
 
     private final TransactionalOperator transactionalOperator;
 
+    private final QueryHelper queryHelper;
+
     public LocalDeviceInstanceService(DeviceRegistry registry,
                                       LocalDeviceProductService deviceProductService,
                                       @SuppressWarnings("all")
@@ -118,7 +122,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                                       ApplicationEventPublisher eventPublisher,
                                       DeviceConfigMetadataManager metadataManager,
                                       RelationService relationService,
-                                      TransactionalOperator transactionalOperator) {
+                                      TransactionalOperator transactionalOperator,
+                                      QueryHelper queryHelper) {
         this.registry = registry;
         this.deviceProductService = deviceProductService;
         this.tagRepository = tagRepository;
@@ -127,6 +132,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
         this.metadataManager = metadataManager;
         this.relationService = relationService;
         this.transactionalOperator = transactionalOperator;
+        this.queryHelper = queryHelper;
     }
 
     @Override
@@ -840,6 +846,70 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                           .map(Tuple2::getT2)
                           .as(this::save))
             ).map(SaveResult::getTotal);
+    }
+
+    public Mono<Integer> batchUpdate(BatchUpdateDeviceRequest request) {
+        return getRepository()
+            .createUpdate()
+            .set(DeviceInstanceEntity::getUserId, request.getUserId())
+            .set(DeviceInstanceEntity::getDescribe, request.getDescribe())
+            .set(DeviceInstanceEntity::getModifierId, request.getModifyUserId())
+            .where()
+            .in("id", request.getIds())
+            .execute();
+    }
+
+    public Flux<DeviceInstanceEntity> queryCustomerDevices(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                "select t.* from dev_device_instance t left join s_user_detail userDetail on userDetail.id = t.user_id left join dev_device_card deviceCard on deviceCard.device_id = t.id and deviceCard.use_state = 1",
+                DeviceInstanceEntity::new)
+            .where(query)
+            .fetch();
+    }
+
+    public Mono<PagerResult<CustomerDevice>> queryCustomerDevice(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                "select * from dev_device_instance t left join s_user_detail userDetail on userDetail.id = t.user_id left join dev_device_card deviceCard on deviceCard.device_id = t.id and deviceCard.use_state = 1",
+                CustomerDevice::new)
+            .where(query)
+            .fetchPaged()
+            .flatMap(page -> Flux
+                .fromIterable(page.getData())
+                .index()
+                .map(tuple -> CustomerDevice.of(tuple.getT2(), page.getPageSize() * page.getPageIndex() + tuple.getT1().intValue() + 1))
+                .collectList()
+                .map(list -> {
+                    page.setData(list);
+                    return page;
+                }));
+    }
+
+    public Mono<Integer> countCustomerDevice(QueryParamEntity query) {
+        return queryHelper
+            .select("select * from dev_device_instance t left join s_user_detail userDetail on userDetail.id = t.user_id")
+            .where(query)
+            .count();
+    }
+
+    public Mono<List<DevicePosition>> queryDevicePosition(QueryParamEntity query) {
+        return queryCustomerDevices(query)
+            .filter(device -> device.getState() == DeviceState.online)
+            .filter(device -> StringUtils.hasText(device.getLng()) && StringUtils.hasText(device.getLat()))
+            .collect(Collectors.groupingBy(device -> device.getLng() + "," + device.getLat(), Collectors.counting()))
+            .map(grouped -> grouped
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    String[] point = entry.getKey().split(",", 2);
+                    DevicePosition position = new DevicePosition();
+                    position.setLng(point[0]);
+                    position.setLat(point.length > 1 ? point[1] : "");
+                    position.setNum(entry.getValue().intValue());
+                    return position;
+                })
+                .collect(Collectors.toList()));
     }
 
     private static <R extends DeviceMessageReply, T> Function<R, Mono<T>> mapReply(Function<R, T> function) {
