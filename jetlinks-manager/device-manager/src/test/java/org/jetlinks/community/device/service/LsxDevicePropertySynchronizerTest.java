@@ -22,6 +22,8 @@ import org.jetlinks.community.device.entity.DeviceInstanceEntity;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
+import javax.persistence.Column;
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -83,6 +85,15 @@ class LsxDevicePropertySynchronizerTest {
         Assert.assertEquals(DigestUtils.md5Hex("D0:A0:D6:8C:B4:C8"), detail.getSubDomain());
         Assert.assertEquals(1, detail.getCards().size());
         Assert.assertEquals("89861123242042925346", detail.getCards().get(0).getIccid());
+    }
+
+    @Test
+    void shouldExposeCustomerOwnerUserIdColumn() throws NoSuchFieldException {
+        Field field = DeviceInstanceEntity.class.getDeclaredField("userId");
+        Column column = field.getAnnotation(Column.class);
+
+        Assert.assertNotNull(column);
+        Assert.assertEquals("user_id", column.name());
     }
 
     private Map<String, Object> realDevicePayload() {

@@ -162,6 +162,10 @@ public class DeviceInstanceEntity extends GenericEntity<String> implements Recor
     @Deprecated
     private String orgId;
 
+    @Column(name = "user_id", length = 64)
+    @Schema(description = "客户用户ID")
+    private String userId;
+
     @Column(name = "parent_id", length = 64)
     @Schema(description = "父级设备ID")
     private String parentId;

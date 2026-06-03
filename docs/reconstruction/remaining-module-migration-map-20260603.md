@@ -70,7 +70,12 @@ left join dev_device_card deviceCard on deviceCard.device_id = t.id and deviceCa
 - 前端客户设备列表/详情/导入/导出页面
 - 数据迁移脚本中的 `user_id` 字段映射
 
-当前 2.11 设备主数据脚本还没有写入 `user_id`，这是下一轮必须补的点。
+当前 2.11 已开始补 `user_id`：
+
+- `DeviceInstanceEntity.userId` 映射 `dev_device_instance.user_id`。
+- `migrate-device-master-data.mjs` 已把老库 `user_id/userId` 映射到目标 `user_id`。
+
+后续客户设备 Controller 迁移时，应继续复用这条关系。
 
 ### 设备任务
 
@@ -157,11 +162,10 @@ docs/reconstruction/patches/0001-feat-add-lsx-reweb-action.patch
 
 ### 后端
 
-1. 在 2.11 `DeviceInstanceEntity` 补 `userId`，数据库字段为 `user_id`。
-2. 从 2.1.1 迁 `CustomerController`，优先保留查询、创建、更新、当前客户详情。
-3. 从 2.1.1 迁 `CustomerDeviceController`，优先保留查询、详情、统计、批量更新。
-4. 从 2.1.1 迁 `DeviceJob`、`DeviceJobController`、`DeviceJobService`，先验证 2.11 规则引擎 API 差异。
-5. 补单元测试或 slice 测试，至少覆盖客户设备查询条件和设备任务实体序列化。
+1. 从 2.1.1 迁 `CustomerController`，优先保留查询、创建、更新、当前客户详情。
+2. 从 2.1.1 迁 `CustomerDeviceController`，优先保留查询、详情、统计、批量更新。
+3. 从 2.1.1 迁 `DeviceJob`、`DeviceJobController`、`DeviceJobService`，先验证 2.11 规则引擎 API 差异。
+4. 补单元测试或 slice 测试，至少覆盖客户设备查询条件和设备任务实体序列化。
 
 ### 前端
 

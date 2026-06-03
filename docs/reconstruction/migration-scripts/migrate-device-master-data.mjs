@@ -51,6 +51,7 @@ function mapDevice(row) {
     create_time: normalizeTime(row.create_time),
     modifier_id: normalizeString(row.modifier_id),
     modify_time: normalizeTime(row.modify_time),
+    user_id: normalizeString(row.user_id ?? row.userId),
     mac: normalizeString(row.mac),
     imei: normalizeString(row.imei),
     firmware_version: normalizeString(row.firmware_version ?? row.version),
@@ -183,7 +184,7 @@ async function migrateDevices() {
           `
           insert into dev_device_instance (
             id, name, product_id, product_name, state, registry_time,
-            creator_id, create_time, modifier_id, modify_time,
+            creator_id, create_time, modifier_id, modify_time, user_id,
             mac, imei, firmware_version, model, adress,
             t24g_num, t5g_num, rsrp, rsrq, sinr, network,
             lat, lng, location, passwd, operator, switch_state,
@@ -191,11 +192,11 @@ async function migrateDevices() {
           )
           values (
             $1, $2, $3, $4, $5, $6,
-            $7, $8, $9, $10,
-            $11, $12, $13, $14, $15,
-            $16, $17, $18, $19, $20, $21,
-            $22, $23, $24, $25, $26, $27,
-            $28, $29, $30, $31, $32
+            $7, $8, $9, $10, $11,
+            $12, $13, $14, $15, $16,
+            $17, $18, $19, $20, $21, $22,
+            $23, $24, $25, $26, $27, $28,
+            $29, $30, $31, $32, $33
           )
           on conflict (id) do update set
             name = excluded.name,
@@ -205,6 +206,7 @@ async function migrateDevices() {
             registry_time = excluded.registry_time,
             modifier_id = excluded.modifier_id,
             modify_time = excluded.modify_time,
+            user_id = excluded.user_id,
             mac = excluded.mac,
             imei = excluded.imei,
             firmware_version = excluded.firmware_version,
@@ -230,7 +232,7 @@ async function migrateDevices() {
           `,
           [
             device.id, device.name, device.product_id, device.product_name, device.state, device.registry_time,
-            device.creator_id, device.create_time, device.modifier_id, device.modify_time,
+            device.creator_id, device.create_time, device.modifier_id, device.modify_time, device.user_id,
             device.mac, device.imei, device.firmware_version, device.model, device.adress,
             device.t24g_num, device.t5g_num, device.rsrp, device.rsrq, device.sinr, device.network,
             device.lat, device.lng, device.location, device.passwd, device.operator, device.switch_state,
@@ -346,4 +348,3 @@ try {
   await mysqlPool.end();
   await pgPool.end();
 }
-

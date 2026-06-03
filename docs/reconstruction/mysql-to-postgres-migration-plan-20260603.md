@@ -195,6 +195,7 @@ creator_id
 create_time
 modifier_id
 modify_time
+user_id
 mac
 imei
 firmware_version
@@ -225,6 +226,7 @@ offline_time
 - 老库如果字段叫 `webpwd`，目标库映射为 `passwd`。
 - 老库如果只有 `gpsloc`，需要解析成 `lat/lng/location`，不能直接塞一个字符串。
 - `subDomain` 不入库，由 2.11 `DeviceDetail` 按 `mac` 动态计算。
+- 老客户设备关系依赖 `dev_device_instance.user_id -> s_user_detail.id`，目标 2.11 已补 `user_id` 字段，迁设备主数据时必须保留。
 
 ### 第 4 阶段：迁当前 SIM 卡
 
@@ -668,6 +670,6 @@ docs/reconstruction/remaining-module-migration-map-20260603.md
 当前最重要的新增发现：
 
 - 老客户设备关系依赖 `dev_device_instance.user_id -> s_user_detail.id`。
-- 当前 2.11 设备主数据脚本还没有迁 `user_id`，后续迁客户设备模块前必须补。
+- 当前 2.11 设备主数据脚本已迁 `user_id`，但客户设备 Controller 和页面还没有完成。
 - `dev_device_job` 只迁任务定义和状态，不迁执行日志。
 - REWEB 不迁独立表，继续依赖 `mac/passwd` 等设备主数据字段。
