@@ -166,6 +166,94 @@ public class DeviceInstanceEntity extends GenericEntity<String> implements Recor
     @Schema(description = "父级设备ID")
     private String parentId;
 
+    @Column
+    @Schema(description = "型号")
+    private String model;
+
+    @Column(name = "firmware_version")
+    @Schema(description = "固件版本")
+    private String firmwareVersion;
+
+    @Column(name = "mac")
+    @Schema(description = "MAC地址")
+    private String mac;
+
+    @Column(name = "imei")
+    @Schema(description = "IMEI")
+    private String imei;
+
+    @Column(name = "adress")
+    @Schema(description = "客户端地址")
+    private String adress;
+
+    @Column(name = "t24g_num")
+    @Schema(description = "2.4G终端数")
+    private Integer t24gNum;
+
+    @Column(name = "t5g_num")
+    @Schema(description = "5G终端数")
+    private Integer t5gNum;
+
+    @Column(name = "rsrp")
+    @Schema(description = "RSRP")
+    private String rsrp;
+
+    @Column(name = "rsrq")
+    @Schema(description = "RSRQ")
+    private String rsrq;
+
+    @Column(name = "sinr")
+    @Schema(description = "SINR")
+    private String sinr;
+
+    @Column(name = "network")
+    @Schema(description = "网络连接类型")
+    private String network;
+
+    @Column(name = "lat")
+    @Schema(description = "客户端坐标-纬度")
+    private String lat;
+
+    @Column(name = "lng")
+    @Schema(description = "客户端坐标-经度")
+    private String lng;
+
+    @Column(name = "location")
+    @Schema(description = "设备地理位置")
+    private String location;
+
+    @Column(name = "passwd")
+    @Schema(description = "REWEB密码")
+    private String passwd;
+
+    @Column
+    @Schema(description = "最近上线时间")
+    private Long onlineTime;
+
+    @Column
+    @Schema(description = "最近离线时间")
+    private Long offlineTime;
+
+    @Column
+    @Schema(description = "运营商")
+    private String operator;
+
+    @Column
+    @Schema(description = "切卡状态 0手动 1自动")
+    private String switchState;
+
+    @Column
+    @Schema(description = "是否同步 0未同步 1已同步")
+    private String syncFlag;
+
+    @Column
+    @Schema(description = "服务器地址，最多三个")
+    private String pingAddr;
+
+    @Column
+    @Schema(description = "重试次数1-20")
+    private Integer pingRetry;
+
     //拓展特性,比如是否为子设备独立状态管理。
     @Column
     @ColumnType(javaType = Long.class, jdbcType = JDBCType.BIGINT)
@@ -352,7 +440,21 @@ public class DeviceInstanceEntity extends GenericEntity<String> implements Recor
                 .addElement(EnumType.Element.of("online", "在线"))),
             SimplePropertyMetadata.of("orgId", "机构id", StringType.GLOBAL),
             SimplePropertyMetadata.of("parentId", "父设备id", StringType.GLOBAL),
-            SimplePropertyMetadata.of("deriveMetadata", "独立物模型", StringType.GLOBAL)
+            SimplePropertyMetadata.of("deriveMetadata", "独立物模型", StringType.GLOBAL),
+            SimplePropertyMetadata.of("model", "型号", StringType.GLOBAL),
+            SimplePropertyMetadata.of("firmwareVersion", "固件版本", StringType.GLOBAL),
+            SimplePropertyMetadata.of("mac", "MAC地址", StringType.GLOBAL),
+            SimplePropertyMetadata.of("imei", "IMEI", StringType.GLOBAL),
+            SimplePropertyMetadata.of("rsrp", "RSRP", StringType.GLOBAL),
+            SimplePropertyMetadata.of("rsrq", "RSRQ", StringType.GLOBAL),
+            SimplePropertyMetadata.of("sinr", "SINR", StringType.GLOBAL),
+            SimplePropertyMetadata.of("network", "网络连接类型", StringType.GLOBAL),
+            SimplePropertyMetadata.of("passwd", "REWEB密码", StringType.GLOBAL),
+            SimplePropertyMetadata.of("operator", "运营商", StringType.GLOBAL),
+            SimplePropertyMetadata.of("switchState", "切卡状态", StringType.GLOBAL),
+            SimplePropertyMetadata.of("syncFlag", "同步状态", StringType.GLOBAL),
+            SimplePropertyMetadata.of("pingAddr", "Ping服务器地址", StringType.GLOBAL),
+            SimplePropertyMetadata.of("pingRetry", "Ping重试次数", StringType.GLOBAL)
         );
     }
 }

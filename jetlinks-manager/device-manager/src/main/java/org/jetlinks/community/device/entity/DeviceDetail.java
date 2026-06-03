@@ -18,6 +18,7 @@ package org.jetlinks.community.device.entity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.jetlinks.community.device.enums.DeviceState;
 import org.jetlinks.community.device.enums.DeviceType;
@@ -94,6 +95,33 @@ public class DeviceDetail {
     @Schema(description = "ip地址")
     private String address;
 
+    @Schema(description = "Firmware version")
+    private String firmwareVersion;
+
+    @Schema(description = "MAC")
+    private String mac;
+
+    @Schema(description = "IMEI")
+    private String imei;
+
+    @Schema(description = "2.4G terminal count")
+    private Integer t24gNum;
+
+    @Schema(description = "5G terminal count")
+    private Integer t5gNum;
+
+    @Schema(description = "RSRP")
+    private String rsrp;
+
+    @Schema(description = "RSRQ")
+    private String rsrq;
+
+    @Schema(description = "SINR")
+    private String sinr;
+
+    @Schema(description = "Network")
+    private String network;
+
     //上线时间
     @Schema(description = "上线时间")
     private long onlineTime;
@@ -165,6 +193,45 @@ public class DeviceDetail {
 
     @Schema(description = "产品所属品类名称")
     private String classifiedName;
+
+    @Schema(description = "Model")
+    private String model;
+
+    @Schema(description = "REWEB port")
+    private Integer port;
+
+    @Schema(description = "REWEB sub-domain")
+    private String subDomain;
+
+    @Schema(description = "Latitude")
+    private String lat;
+
+    @Schema(description = "Longitude")
+    private String lng;
+
+    @Schema(description = "Location")
+    private String location;
+
+    @Schema(description = "REWEB password")
+    private String passwd;
+
+    @Schema(description = "Operator")
+    private String operator;
+
+    @Schema(description = "SIM switch state, 0 manual, 1 automatic")
+    private String switchState;
+
+    @Schema(description = "Sync flag, 0 unsynced, 1 synced")
+    private String syncFlag;
+
+    @Schema(description = "Ping address")
+    private String pingAddr;
+
+    @Schema(description = "Ping retry")
+    private Integer pingRetry;
+
+    @Schema(description = "Device cards")
+    private List<DeviceCardEntity> cards = new ArrayList<>();
 
 
 
@@ -299,6 +366,11 @@ public class DeviceDetail {
         return this;
     }
 
+    public DeviceDetail withCards(List<DeviceCardEntity> cards) {
+        this.cards = cards == null ? new ArrayList<>() : cards;
+        return this;
+    }
+
     public DeviceDetail with(DeviceProductEntity productEntity) {
         if (productEntity == null) {
             return this;
@@ -325,13 +397,50 @@ public class DeviceDetail {
     public DeviceDetail with(DeviceInstanceEntity device) {
 
         setId(device.getId());
+        setModel(device.getModel());
         setName(device.getName());
         setState(device.getState());
         setParentId(device.getParentId());
         setDescription(device.getDescribe());
+        setNetwork(device.getNetwork());
+        setRsrp(device.getRsrp());
+        setRsrq(device.getRsrq());
+        setImei(device.getImei());
+        setMac(device.getMac());
+        setFirmwareVersion(device.getFirmwareVersion());
+        setSinr(device.getSinr());
+        setT24gNum(device.getT24gNum());
+        setT5gNum(device.getT5gNum());
+        setAddress(device.getAdress());
+        setOperator(device.getOperator());
+        setSwitchState(device.getSwitchState());
+        setSyncFlag(device.getSyncFlag());
+        setPingAddr(device.getPingAddr());
+        setPingRetry(device.getPingRetry());
+        if (StringUtils.hasText(device.getMac())) {
+            setSubDomain(DigestUtils.md5Hex(device.getMac()));
+        }
         if (device.getFeatures() != null) {
             withFeatures(Arrays.asList(device.getFeatures()));
         }
+        Optional.ofNullable(device.getOnlineTime())
+                .ifPresent(this::setOnlineTime);
+
+        Optional.ofNullable(device.getOfflineTime())
+                .ifPresent(this::setOfflineTime);
+
+        Optional.ofNullable(device.getLat())
+                .ifPresent(this::setLat);
+
+        Optional.ofNullable(device.getLng())
+                .ifPresent(this::setLng);
+
+        Optional.ofNullable(device.getLocation())
+                .ifPresent(this::setLocation);
+
+        Optional.ofNullable(device.getPasswd())
+                .ifPresent(this::setPasswd);
+
         Optional.ofNullable(device.getRegistryTime())
                 .ifPresent(this::setRegisterTime);
 

@@ -100,6 +100,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
 
     private final ReactiveRepository<DeviceTagEntity, String> tagRepository;
 
+    private final ReactiveRepository<DeviceCardEntity, String> cardRepository;
+
     private final ApplicationEventPublisher eventPublisher;
 
     private final DeviceConfigMetadataManager metadataManager;
@@ -112,6 +114,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                                       LocalDeviceProductService deviceProductService,
                                       @SuppressWarnings("all")
                                       ReactiveRepository<DeviceTagEntity, String> tagRepository,
+                                      ReactiveRepository<DeviceCardEntity, String> cardRepository,
                                       ApplicationEventPublisher eventPublisher,
                                       DeviceConfigMetadataManager metadataManager,
                                       RelationService relationService,
@@ -119,6 +122,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
         this.registry = registry;
         this.deviceProductService = deviceProductService;
         this.tagRepository = tagRepository;
+        this.cardRepository = cardRepository;
         this.eventPublisher = eventPublisher;
         this.metadataManager = metadataManager;
         this.relationService = relationService;
@@ -503,6 +507,16 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .defaultIfEmpty(Collections.emptyMap());
     }
 
+    private Mono<Map<String, List<DeviceCardEntity>>> queryDeviceCardsGroup(Collection<String> deviceIdList) {
+        return cardRepository
+            .createQuery()
+            .where()
+            .in(DeviceCardEntity::getDeviceId, deviceIdList)
+            .fetch()
+            .collect(Collectors.groupingBy(DeviceCardEntity::getDeviceId))
+            .defaultIfEmpty(Collections.emptyMap());
+    }
+
     private Flux<DeviceDetail> convertDeviceInstanceToDetail(List<DeviceInstanceEntity> instanceList,
                                                              boolean includeTag,
                                                              boolean includeBinds,
@@ -529,6 +543,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .defaultIfEmpty(Collections.emptyMap())
             : Mono.just(Collections.emptyMap());
 
+        Mono<Map<String, List<DeviceCardEntity>>> cards = this.queryDeviceCardsGroup(deviceIdList);
 
         return Mono
             .zip(
@@ -539,7 +554,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                 //T2:查询出标签并按设备ID分组
                 tags,
                 //T3: 关系信息
-                relations
+                relations,
+                cards
             )
             .flatMapMany(tp5 -> Flux
                 //遍历设备,将设备信息转为详情.
@@ -554,6 +570,7 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
                         , tp5.getT2().get(instance.getId())
                         //关系信息
                         , tp5.getT3().get(instance.getId())
+                        , tp5.getT4().getOrDefault(instance.getId(), Collections.emptyList())
                     )
                     .as(MonoTracer.create("/LocalDeviceInstanceService/createDeviceDetail/" + instance.getId()))
                 ))
@@ -566,7 +583,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
     private Mono<DeviceDetail> createDeviceDetail(DeviceInstanceEntity device,
                                                   DeviceProductEntity product,
                                                   List<DeviceTagEntity> tags,
-                                                  List<RelatedInfo> relations) {
+                                                  List<RelatedInfo> relations,
+                                                  List<DeviceCardEntity> cards) {
         if (product == null) {
             log.warn("device [{}] product [{}] does not exists", device.getId(), device.getProductId());
             return Mono.empty();
@@ -575,7 +593,8 @@ public class LocalDeviceInstanceService extends GenericReactiveCrudService<Devic
             .with(product)
             .with(device)
             .with(tags)
-            .withRelation(relations);
+            .withRelation(relations)
+            .withCards(cards);
 
         return Mono
             .zip(

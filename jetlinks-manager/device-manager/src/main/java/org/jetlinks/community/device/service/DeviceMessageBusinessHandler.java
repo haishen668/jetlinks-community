@@ -15,12 +15,14 @@
  */
 package org.jetlinks.community.device.service;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.hswebframework.ezorm.rdb.mapping.ReactiveRepository;
 import org.jetlinks.community.PropertyConstants;
 import org.jetlinks.community.buffer.PersistenceBuffer;
+import org.jetlinks.community.device.entity.DeviceCardEntity;
 import org.jetlinks.community.device.entity.DeviceInstanceEntity;
 import org.jetlinks.community.device.entity.DeviceTagEntity;
 import org.jetlinks.community.device.enums.DeviceState;
@@ -33,6 +35,7 @@ import org.jetlinks.core.device.DeviceRegistry;
 import org.jetlinks.core.event.EventBus;
 import org.jetlinks.core.event.Subscription;
 import org.jetlinks.core.message.*;
+import org.jetlinks.core.message.property.ReportPropertyMessage;
 import org.jetlinks.core.metadata.DeviceMetadata;
 import org.jetlinks.core.utils.Reactors;
 import org.jetlinks.reactor.ql.utils.CastUtils;
@@ -89,6 +92,8 @@ public class DeviceMessageBusinessHandler implements CommandLineRunner {
     private final DeviceRegistry registry;
 
     private final ReactiveRepository<DeviceTagEntity, String> tagRepository;
+
+    private final ReactiveRepository<DeviceCardEntity, String> cardRepository;
 
     private final EventBus eventBus;
 
@@ -290,6 +295,56 @@ public class DeviceMessageBusinessHandler implements CommandLineRunner {
                 .then();
         }
         return Mono.empty();
+    }
+
+    @Subscribe({"/device/*/*/message/property/report", "device/*/*/message/property/report"})
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Mono<Void> syncLsxDeviceProfile(DeviceMessage message) {
+        if (!(message instanceof ReportPropertyMessage)) {
+            return Mono.empty();
+        }
+
+        JSONObject properties = message.toJson().getJSONObject("properties");
+        if (properties == null || properties.isEmpty()) {
+            return Mono.empty();
+        }
+
+        return deviceService
+            .findById(message.getDeviceId())
+            .flatMap(current -> {
+                LsxDevicePropertySynchronizer.LsxDevicePropertyUpdate update =
+                    LsxDevicePropertySynchronizer.applyReportedProperties(current, properties);
+
+                Mono<Void> deviceUpdate = deviceService
+                    .updateById(current.getId(), update.getDevice())
+                    .then();
+
+                Mono<Void> cardUpdate = update
+                    .getCurrentCard()
+                    .map(card -> upsertCurrentCard(current.getId(), card))
+                    .orElseGet(Mono::empty);
+
+                return deviceUpdate.then(cardUpdate);
+            });
+    }
+
+    private Mono<Void> upsertCurrentCard(String deviceId, DeviceCardEntity card) {
+        card.setDeviceId(deviceId);
+        card.setModifyTime(System.currentTimeMillis());
+        return cardRepository
+            .createQuery()
+            .where(DeviceCardEntity::getDeviceId, deviceId)
+            .and(DeviceCardEntity::getIccid, card.getIccid())
+            .fetchOne()
+            .flatMap(old -> cardRepository.updateById(old.getId(), card))
+            .switchIfEmpty(Mono.defer(() -> cardRepository.insert(card)))
+            .then(cardRepository
+                      .createUpdate()
+                      .set(DeviceCardEntity::getUseState, 0)
+                      .where(DeviceCardEntity::getDeviceId, deviceId)
+                      .not(DeviceCardEntity::getIccid, card.getIccid())
+                      .execute())
+            .then();
     }
 
     @Subscribe("/device/*/*/metadata/derived")
