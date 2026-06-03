@@ -52,6 +52,7 @@ node migrate-device-master-data.mjs
 - `.env.example`：连接信息模板。
 - `inventory.mjs`：导出源 MySQL 和目标 PostgreSQL 表/字段清点，辅助做表映射。
 - `migrate-device-master-data.mjs`：示例迁移 `dev_device_instance` 和 `dev_device_card`。
+- `migrate-business-modules-skeleton.mjs`：客户、客户设备、设备任务的清点骨架，只检查表、字段、数量和样例，不写目标库。
 
 ## 继续扩展的模块
 
@@ -63,3 +64,15 @@ node migrate-device-master-data.mjs
 4. 每批完成后写入 `migration_checkpoint`。
 5. 每个模块补 SQL 数量校验和 API 校验。
 
+客户、客户设备、设备任务在写入前，先跑：
+
+```powershell
+node migrate-business-modules-skeleton.mjs
+```
+
+这个脚本只做清点，不会写 PostgreSQL。它会重点检查：
+
+- `s_user_detail.tree_path`
+- `dev_device_instance.user_id`
+- `dev_device_job` 的任务定义字段
+- 目标库是否已经具备对应字段

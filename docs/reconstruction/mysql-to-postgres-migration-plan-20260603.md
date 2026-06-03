@@ -280,6 +280,7 @@ npm i mysql2 pg dotenv
 docs/reconstruction/migration-scripts/.env.example
 docs/reconstruction/migration-scripts/inventory.mjs
 docs/reconstruction/migration-scripts/migrate-device-master-data.mjs
+docs/reconstruction/migration-scripts/migrate-business-modules-skeleton.mjs
 docs/reconstruction/migration-scripts/README.md
 ```
 
@@ -655,3 +656,18 @@ pg_restore -h 49.234.53.230 -p 5433 -U postgres -d jetlinks_211_migration --clea
 5. 再跑 `dev_device_instance` 和 `dev_device_card` 的 dry-run。
 6. 用设备 `869624060285951` 做详情页和 SQL 校验。
 7. 确认后再进入客户设备、任务、REWEB、规则配置模块。
+
+## 剩余模块迁移地图
+
+客户、客户设备、设备任务的代码和数据边界已经单独记录：
+
+```text
+docs/reconstruction/remaining-module-migration-map-20260603.md
+```
+
+当前最重要的新增发现：
+
+- 老客户设备关系依赖 `dev_device_instance.user_id -> s_user_detail.id`。
+- 当前 2.11 设备主数据脚本还没有迁 `user_id`，后续迁客户设备模块前必须补。
+- `dev_device_job` 只迁任务定义和状态，不迁执行日志。
+- REWEB 不迁独立表，继续依赖 `mac/passwd` 等设备主数据字段。
