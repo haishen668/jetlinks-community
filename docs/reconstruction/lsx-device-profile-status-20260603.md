@@ -97,14 +97,14 @@ jetlinks-standalone/target/application.jar
 当前 2.11 后端已重新启动：
 
 ```text
-PID: 35568
-URL: http://127.0.0.1:18848
+PID: 46380
+URL: http://127.0.0.1:8848
 ```
 
 健康检查：
 
 ```powershell
-Invoke-RestMethod -Uri http://127.0.0.1:18848/actuator/health
+Invoke-RestMethod -Uri http://127.0.0.1:8848/actuator/health
 ```
 
 结果：
@@ -178,7 +178,7 @@ modifier_id
 ## 当前环境状态
 
 - 2.1.1 后端：已停止。
-- 2.11 后端：运行中，PID `35568`，端口 `18848`。
+- 2.11 后端：运行中，PID `46380`，端口 `8848`。
 - 2.11 前端：沿用之前已启动的 2.11 前端环境；如端口占用或页面异常，下轮先重新确认前端进程。
 - 2.11 数据库：`jetlinks_211_migration`，已自动更新 LSX 字段和卡表。
 
