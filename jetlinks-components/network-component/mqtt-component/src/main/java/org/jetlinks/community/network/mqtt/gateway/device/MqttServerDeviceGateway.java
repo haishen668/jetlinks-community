@@ -181,7 +181,7 @@ class MqttServerDeviceGateway extends AbstractDeviceGateway {
                                 if (!hasValue) {
                                     span.setStatus(StatusCode.ERROR, "device not exists");
                                 }
-                                span.setAttribute(SpanKey.address, connection.getClientAddress().toString());
+                                span.setAttribute(SpanKey.address, String.valueOf(connection.getClientAddress()));
                                 span.setAttribute(clientId, connection.getClientId());
                             }))
             //设备认证错误,拒绝连接
