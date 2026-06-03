@@ -62,22 +62,25 @@
 2. `docs/reconstruction/old-jar-feature-inventory.md`
    - 老 jar 私有功能清单，说明哪些功能已确认、如何迁到 2.11。
 
-3. `docs/reconstruction/local-mqtt-connection-status-20260603.md`
+3. `docs/reconstruction/2.11-migration-worktrees-20260603.md`
+   - 已创建的 2.11 后端/前端迁移 worktree、分支、tag、JDK/Node 基线。
+
+4. `docs/reconstruction/local-mqtt-connection-status-20260603.md`
    - 本地 MQTT 和真实设备跑通证据、数据库清理记录、协议 jar 状态。
 
-4. `docs/reconstruction/frontend-backend-verification.md`
+5. `docs/reconstruction/frontend-backend-verification.md`
    - 前后端接口对齐清单，尤其是客户设备、设备任务、REWEB 和物联网卡缺口。
 
-5. `docs/reconstruction/frontend-2.11-migration-plan.md`
+6. `docs/reconstruction/frontend-2.11-migration-plan.md`
    - 前端迁到 2.11 的策略。注意：前端要迁移，但当前本地 Vite 代理和生成文件不等于业务迁移成果。
 
-6. `docs/reconstruction/reweb-backend-recovery-summary.md`
+7. `docs/reconstruction/reweb-backend-recovery-summary.md`
    - REWEB 平台侧流程和 FRP 边界。
 
-7. `docs/reconstruction/lsx-device-status.md`
+8. `docs/reconstruction/lsx-device-status.md`
    - 2.1.1 源码恢复总状态、旧 jar 指纹、公开源码基线判断。
 
-8. `F:\project\other\jetlinks\docs\online-env-notes.md`
+9. `F:\project\other\jetlinks\docs\online-env-notes.md`
    - 线上环境、MySQL、Nginx、FRP、协议链路事实。
 
 ## 文档分类
@@ -90,6 +93,7 @@
 - `local-mqtt-connection-status-20260603.md`
 - `frontend-backend-verification.md`
 - `frontend-2.11-migration-plan.md`
+- `2.11-migration-worktrees-20260603.md`
 - `reweb-backend-recovery-summary.md`
 - `F:\project\other\jetlinks\docs\online-env-notes.md`
 
