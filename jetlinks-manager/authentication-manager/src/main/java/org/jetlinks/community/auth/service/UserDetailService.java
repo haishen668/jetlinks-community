@@ -15,6 +15,7 @@
  */
 package org.jetlinks.community.auth.service;
 
+import org.hswebframework.ezorm.rdb.executor.reactive.ReactiveSqlExecutor;
 import org.hswebframework.web.api.crud.entity.PagerResult;
 import org.hswebframework.web.api.crud.entity.QueryParamEntity;
 import org.hswebframework.web.authorization.Authentication;
@@ -30,6 +31,7 @@ import org.hswebframework.web.system.authorization.api.event.ClearUserAuthorizat
 import org.hswebframework.web.system.authorization.api.event.UserDeletedEvent;
 import org.hswebframework.web.system.authorization.api.service.reactive.ReactiveUserService;
 import org.hswebframework.web.validator.ValidatorUtils;
+import org.jetlinks.community.auth.entity.CustomerDetail;
 import org.jetlinks.community.auth.entity.UserDetail;
 import org.jetlinks.community.auth.entity.UserDetailEntity;
 import org.jetlinks.community.auth.enums.DefaultUserEntityType;
@@ -49,6 +51,7 @@ import reactor.core.publisher.Mono;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -77,6 +80,7 @@ public class UserDetailService extends GenericReactiveCrudService<UserDetailEnti
     private final UserTokenManager userTokenManager;
     private final UserSettingService userSettingService;
     private final QueryHelper queryHelper;
+    private final ReactiveSqlExecutor sqlExecutor;
 
     private final ThingsRegistry registry;
 
@@ -88,6 +92,7 @@ public class UserDetailService extends GenericReactiveCrudService<UserDetailEnti
                              UserTokenManager userTokenManager,
                              UserSettingService userSettingService,
                              QueryHelper queryHelper,
+                             ReactiveSqlExecutor sqlExecutor,
                              ThingsRegistry registry) {
         this.userService = userService;
         this.roleService = roleService;
@@ -96,6 +101,7 @@ public class UserDetailService extends GenericReactiveCrudService<UserDetailEnti
         this.userTokenManager = userTokenManager;
         this.userSettingService = userSettingService;
         this.queryHelper = queryHelper;
+        this.sqlExecutor = sqlExecutor;
         this.registry = registry;
         this.authenticationManager = authenticationManager;
         // 注册默认用户类型
@@ -176,6 +182,25 @@ public class UserDetailService extends GenericReactiveCrudService<UserDetailEnti
             );
     }
 
+    public Mono<PagerResult<CustomerDetail>> queryCustomerDetail(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                "select * from s_user t inner join s_user_detail userDetail on userDetail.id = t.id left join s_user creator on creator.id = t.creator_id",
+                CustomerDetail::new)
+            .where(query)
+            .fetchPaged();
+    }
+
+    public Mono<List<UserEntity>> queryCustomers(QueryParamEntity query) {
+        return queryHelper
+            .select(
+                "select t1.id,t1.name from s_user t inner join s_user_detail t1 on t1.id = t.id",
+                UserEntity::new)
+            .where(query)
+            .fetch()
+            .collectList();
+    }
+
     private Flux<UserDetail> fillUserDetail(List<UserDetail> users) {
         if (CollectionUtils.isEmpty(users)) {
             return Flux.empty();
@@ -211,8 +236,8 @@ public class UserDetailService extends GenericReactiveCrudService<UserDetailEnti
             .flatMap(userId -> {
                 detail.setId(userId);
                 //保存详情
-                return this
-                    .save(detail.toDetailEntity())
+                return updateTreePath(userId, detail, entity, isUpdate)
+                    .then(Mono.fromSupplier(detail::toDetailEntity).flatMap(this::save))
                     //绑定角色
                     .then(roleService.bindUser(Collections.singleton(userId), request.getRoleIdList(), isUpdate))
                     //绑定机构部门
@@ -224,6 +249,45 @@ public class UserDetailService extends GenericReactiveCrudService<UserDetailEnti
             //只执行一次清空用户权限事件
             .flatMap(userId -> ClearUserAuthorizationCacheEvent.of(userId).publish(eventPublisher).thenReturn(userId))
             .as(LocaleUtils::transform);
+    }
+
+    private Mono<Void> updateTreePath(String userId, UserDetail detail, UserEntity requestedEntity, boolean isUpdate) {
+        return userService
+            .findById(userId)
+            .flatMap(savedUser -> {
+                String creatorId = isUpdate ? requestedEntity.getCreatorId() : savedUser.getCreatorId();
+                String creatorLookupId = creatorId == null ? "" : creatorId;
+
+                return findById(creatorLookupId)
+                    .switchIfEmpty(Mono.fromSupplier(() -> {
+                        if (!isUpdate) {
+                            detail.setTreePath(",");
+                        }
+                        return detail.toDetailEntity();
+                    }))
+                    .flatMap(creator -> {
+                        boolean creatorChanged = isUpdate
+                            && StringUtils.hasText(requestedEntity.getCreatorId())
+                            && !Objects.equals(savedUser.getCreatorId(), requestedEntity.getCreatorId());
+
+                        String oldTreePath = String.valueOf(detail.getTreePath()) + userId + ",";
+                        if (!isUpdate || creatorChanged) {
+                            String creatorTreePath = creator.getTreePath() == null ? "," : creator.getTreePath();
+                            detail.setTreePath(creatorTreePath + creatorId + ",");
+                        }
+
+                        if (!creatorChanged) {
+                            return Mono.just(creator);
+                        }
+
+                        String newTreePath = detail.getTreePath() + userId + ",";
+                        return sqlExecutor
+                            .update("update s_user set creator_id='" + creatorId + "' where id= '" + userId + "'")
+                            .then(sqlExecutor.update("update s_user_detail set tree_path=replace(tree_path,'" + oldTreePath + "','" + newTreePath + "') where tree_path like '" + oldTreePath + "%'"))
+                            .thenReturn(creator);
+                    });
+            })
+            .then();
     }
 
     /**

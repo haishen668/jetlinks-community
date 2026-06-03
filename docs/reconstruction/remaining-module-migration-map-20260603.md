@@ -22,7 +22,7 @@
 
 | 模块 | 老后端证据 | 老前端/API 证据 | 2.11 当前状态 |
 | --- | --- | --- | --- |
-| 客户 | `CustomerController @RequestMapping("/customer")` | `/customer/**` | 待迁移 |
+| 客户 | `CustomerController @RequestMapping("/customer")` | `/customer/**` | 2.11 后端最小接口已迁 |
 | 客户设备 | `CustomerDeviceController @RequestMapping("/customer/device")` | `/customer/device/**` | 待迁移 |
 | 设备任务 | `DeviceJobController @RequestMapping("/deviceJob")`、`DeviceJob @Table("dev_device_job")` | `/deviceJob/**` | 待迁移 |
 | REWEB | 标准设备功能接口 `POST /device/instance/{deviceId}/function/reweb` | 设备详情按钮打开 `http://{subDomain}.reweb.wugee.net.cn` | 后端标准接口已具备，前端 2.11 已补最小入口 |
@@ -44,6 +44,19 @@
 - 用户状态、用户名、姓名、联系方式
 - 角色关系
 - 组织关系
+
+当前 2.11 已开始补客户模块：
+
+- `CustomerController` 已恢复 `/customer/**` 老接口入口。
+- `CustomerDetail` 已恢复，用于客户分页查询响应。
+- `UserDetailEntity.treePath` 已恢复，字段为 `s_user_detail.tree_path`。
+- `UserDetailService` 已补客户分页查询、无分页查询和保存时的 `treePath` 维护。
+
+仍待验证：
+
+- 用真实 PostgreSQL 数据跑 `/customer/_query`、`/customer/no-paging/_query`。
+- 前端 2.11 客户页面还没有迁。
+- 权限菜单资源还没有完整对齐。
 
 ### 客户设备
 
@@ -162,7 +175,7 @@ docs/reconstruction/patches/0001-feat-add-lsx-reweb-action.patch
 
 ### 后端
 
-1. 从 2.1.1 迁 `CustomerController`，优先保留查询、创建、更新、当前客户详情。
+1. 用真实 PostgreSQL 数据验证 `/customer/**` 查询和保存接口。
 2. 从 2.1.1 迁 `CustomerDeviceController`，优先保留查询、详情、统计、批量更新。
 3. 从 2.1.1 迁 `DeviceJob`、`DeviceJobController`、`DeviceJobService`，先验证 2.11 规则引擎 API 差异。
 4. 补单元测试或 slice 测试，至少覆盖客户设备查询条件和设备任务实体序列化。

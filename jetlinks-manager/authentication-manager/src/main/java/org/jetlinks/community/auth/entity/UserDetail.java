@@ -134,6 +134,8 @@ public class UserDetail {
     @Schema(description = "关联时间")
     private Long relationTime;
 
+    @Schema(description = "创建人树结构")
+    private String treePath;
 
     public static UserDetail of() {
         return EntityFactoryHolder.newInstance(UserDetail.class, UserDetail::new);
@@ -157,6 +159,7 @@ public class UserDetail {
         }
         this.setUsername(entity.getUsername());
         this.setStatus(entity.getStatus());
+        this.setCreatorId(entity.getCreatorId());
         this.setType(UserEntityTypes.getType(entity.getType()));
         return this;
     }
@@ -215,6 +218,9 @@ public class UserDetail {
         userEntity.setUsername(username);
         userEntity.setPassword(password);
         userEntity.setStatus(status);
+        if (StringUtils.isNotBlank(creatorId)) {
+            userEntity.setCreatorId(creatorId);
+        }
         if (type == null) {
             if (!username.equals("admin")) {
                 // 默认设置类型为普通用户

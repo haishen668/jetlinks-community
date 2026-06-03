@@ -56,6 +56,10 @@ public class UserDetailEntity extends GenericEntity<String> implements RecordCre
     @NotBlank(message = "姓名不能为空", groups = {CreateGroup.class})
     private String name;
 
+    @Column(name = "tree_path", length = 2048)
+    @Schema(description = "创建人树结构")
+    private String treePath;
+
     @Schema(description = "邮箱")
     @Column
     @Email(message = "邮件格式错误")
