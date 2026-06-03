@@ -1,68 +1,69 @@
-# LSX Device Reconstruction Status
+# LSX Device 源码恢复状态
 
-Date: 2026-06-02
+日期：2026-06-02
+最近补充：2026-06-03
 
-## Goal
+## 目标
 
-Reconstruct a maintainable source project for the existing modified runtime jar:
+为已经在线上运行的私有改造 jar 恢复一套可维护、可二次开发的源码工程：
 
 ```text
 C:\Users\Administrator\Downloads\lsx-device.jar
 ```
 
-The goal is second development and modification, not just deploying the old jar.
+目标不是继续直接使用旧 jar，而是让本地源码工程能够编译、运行、修改，并尽量对齐旧线上 jar 的行为。
 
-## Current Repository State
+## 当前仓库状态
 
-Backend repository:
+后端仓库：
 
 ```text
 F:\project\other\jetlinks\jetlinks-community
 ```
 
-Private remote:
+私有远程仓库：
 
 ```text
 origin  https://github.com/haishen668/jetlinks-community
 ```
 
-Official upstream added locally:
+本地已添加官方上游：
 
 ```text
 upstream  https://gitee.com/jetlinks/jetlinks-community.git
 ```
 
-The official `2.1` branch was fetched and pushed to the private repository as:
+官方 `2.1` 分支已拉取，并推送到私有仓库：
 
 ```text
 origin/2.1
 ```
 
-The current working branch is:
+当前恢复分支：
 
 ```text
 lsx-device-2.1.1
 ```
 
-It was created from:
+该分支基于：
 
 ```text
 2.1 / 7f69c8f4878799c562cc954835695f18360af180
 ```
 
-## Preserved Previous Work
+## 已保留的旧工作
 
-Before switching away from the original `2.11` branch, local edits were saved:
+从原来的 `2.11` 分支切走前，已将当时本地改动保存为 stash：
 
 ```text
 stash@{0}: On 2.11: codex-save-2.11-before-switch-to-2.1
 ```
 
-Those edits were not discarded.
+这些改动没有被丢弃。
 
-## Jar Fingerprint
+## 旧 Jar 指纹
 
-The old jar contains this Maven metadata:
+旧 jar 中的 Maven 元数据：
 
 ```text
 groupId=org.jetlinks.community
@@ -71,13 +72,13 @@ version=2.1.1
 parent=org.jetlinks.community:jetlinks-community:2.1.1
 ```
 
-The jar build timestamp in `pom.properties` is:
+`pom.properties` 中记录的 jar 构建时间：
 
 ```text
 Wed May 13 21:24:03 CST 2026
 ```
 
-Important dependency versions observed inside the jar:
+旧 jar 中观察到的重要依赖版本：
 
 ```text
 spring-boot                 2.7.11
@@ -92,86 +93,101 @@ vertx-mqtt                  4.3.8
 netty-codec-mqtt            4.1.89.Final
 ```
 
-The main class bytecode is Java 8:
+主类字节码版本是 Java 8：
 
 ```text
 major version: 52
 ```
 
-## Public Source Search Result
+## 公开源码搜索结论
 
-Public GitHub/Gitee tags include `2.1.0` and `2.2.0`, but no public `2.1.1` tag was found.
+公开 GitHub / Gitee 标签中能找到 `2.1.0` 和 `2.2.0`，但没有找到公开的 `2.1.1` 标签。
 
-The public `2.1` branch is still `2.1.0-SNAPSHOT`, so the jar appears to be a private or internal `2.1.1` build based on the public `2.1` line.
+公开 `2.1` 分支仍然是 `2.1.0-SNAPSHOT`。因此当前旧 jar 更像是基于公开 `2.1` 线私有改出来的内部 `2.1.1` 构建。
 
-## Current Working Tree Changes
+## 已完成的恢复工作
 
-Implementation started before this plan document was requested.
-
-Current changes made so far:
+恢复工作开始于本文档创建之前。当前已经完成：
 
 ```text
-Created branch: lsx-device-2.1.1
-Copied jetlinks-standalone to lsx-device
-Removed copied lsx-device/target build output
-Changed root pom.xml version from 2.1.0-SNAPSHOT to 2.1.1
-Added root module: lsx-device
-Changed root dependency properties toward jar fingerprint:
+创建分支：lsx-device-2.1.1
+复制 jetlinks-standalone 为 lsx-device
+删除复制产生的 lsx-device/target 构建产物
+将根 pom.xml 版本从 2.1.0-SNAPSHOT 改为 2.1.1
+在根 pom.xml 中增加 lsx-device 模块
+按旧 jar 指纹对齐根依赖版本：
   spring.boot.version       2.7.11
   hsweb.framework.version   4.0.17
   easyorm.version           4.1.2
   jetlinks.version          1.2.2
-Changed child POM parent versions from 2.1.0-SNAPSHOT to 2.1.1
-Replaced lsx-device/pom.xml with the pom.xml extracted from lsx-device.jar
-Copied jar resources into lsx-device/src/main/resources
-Removed resource files not present in the old jar from lsx-device
-Restored jar configuration resources into lsx-device/src/main/resources
-Aligned dependency versions until BOOT-INF/lib diff is zero
-Restored old jar custom source classes for auth, customer device, notify channel, upload config, alarm/device jobs, and scene action support
-Aligned selected old jar member signatures for customer device deployment, device address sync, REWEB-related fields, customer device queries, and scene trigger metadata parsing
+将子模块 parent 版本从 2.1.0-SNAPSHOT 改为 2.1.1
+用旧 jar 中提取的 pom.xml 替换 lsx-device/pom.xml
+将旧 jar 资源复制到 lsx-device/src/main/resources
+删除 lsx-device 中旧 jar 不存在的资源文件
+恢复旧 jar 中的 application.yml 和 application-wj.yml
+对齐依赖版本，直到 BOOT-INF/lib 差异为 0
+恢复旧 jar 中的私有定制源码类，包括认证、客户设备、通知通道、上传配置、告警、设备任务、场景动作等
+对齐部分旧 jar 成员签名，包括客户设备部署、设备地址同步、REWEB 字段、客户设备查询、场景触发元数据解析等
 ```
 
-The reconstruction and source-level alignment commits are intended to be kept on the private `lsx-device-2.1.1` branch.
+这些恢复和源码级对齐提交应保留在私有 `lsx-device-2.1.1` 分支上。
 
-## Current Verification
+## 旧 Jar 相比公开 2.1 的主要新增和改动
 
-Build command:
+根据旧 jar、反编译证据、类列表对比和源码恢复过程，旧线上 jar 相比公开 JetLinks `2.1` 主要增加或改动了这些能力：
+
+- 客户管理相关接口和实体
+- 客户设备管理相关接口、导入、导出、批量更新、位置查询
+- 设备详情扩展字段：品牌、型号、运营商、切卡状态、同步状态、Ping 配置、REWEB 字段、SIM 卡列表等
+- REWEB 平台侧字段、`subDomain` 计算、`webpwd` 上报同步、功能调用入口
+- 设备 SIM 卡实体与设备上报同步逻辑
+- 设备任务接口、任务执行记录、启用、禁用、删除等能力
+- 告警处理导出相关字段
+- 通知通道实体扩展
+- 上传配置扩展
+- 场景动作和场景触发解析增强
+- `lsx-device` 独立启动模块和旧线上配置资源
+- 旧环境以 MySQL + Redis 为主，而不是新版本 2.11 中遇到的 PostgreSQL 配置
+
+## 当前验证结果
+
+基础打包命令：
 
 ```text
 .\mvnw.cmd -pl lsx-device -am -DskipTests clean package
 ```
 
-Build environment:
+构建环境：
 
 ```text
 JAVA_HOME=C:\Users\Administrator\.jdks\corretto-1.8.0_412
 ```
 
-Result:
+2026-06-02 的验证结果：
 
 ```text
 BUILD SUCCESS
 ```
 
-Latest verified command time:
+当时验证时间：
 
 ```text
 2026-06-02 19:29 CST
 ```
 
-Built artifact:
+打包产物：
 
 ```text
 F:\project\other\jetlinks\jetlinks-community\lsx-device\target\lsx-device.jar
 ```
 
-Latest built artifact SHA-256:
+当时构建产物 SHA-256：
 
 ```text
 A9CD5C1AAB2BAA80355DE5DFDF7C269800C00A715F196B043B2C22D48E5FE3EA
 ```
 
-Outer package alignment evidence:
+外层包对齐证据：
 
 ```text
 BOOT-INF/lib old=357 new=357 missing=0 extra=0
@@ -179,16 +195,16 @@ BOOT-INF/classes files old=14 new=14
 JetLinksApplication bytecode major version=52
 ```
 
-Configuration alignment:
+配置对齐证据：
 
 ```text
-lsx-device/src/main/resources/application.yml matches old jar application.yml by SHA-256.
-lsx-device/src/main/resources/application-wj.yml matches old jar application-wj.yml by SHA-256.
-The old production-sensitive values are present in source because production deployment will use this branch directly.
-Do not print or share the raw values in chat or documentation.
+lsx-device/src/main/resources/application.yml 与旧 jar 中的 application.yml SHA-256 一致。
+lsx-device/src/main/resources/application-wj.yml 与旧 jar 中的 application-wj.yml SHA-256 一致。
+旧线上配置中包含生产敏感值，因为生产部署需要直接使用该分支，所以这些配置已恢复到源码。
+不要在聊天、公开文档或非私有仓库中打印或传播原始敏感值。
 ```
 
-Nested module class-list audit:
+嵌套模块 class-list 审计：
 
 ```text
 authentication-manager-2.1.1.jar old=70  new=72  missing-in-new=0  extra-in-new=2
@@ -198,23 +214,23 @@ notify-manager-2.1.1.jar        old=43  new=69  missing-in-new=0  extra-in-new=2
 io-component-2.1.1.jar          old=32  new=32  missing-in-new=0  extra-in-new=0
 ```
 
-Meaning:
+含义：
 
 ```text
-For the audited custom modules, every class present in the old jar is now present in the rebuilt new jar.
-The rebuilt jar still contains some extra upstream classes that are not in the old runtime jar.
+在已审计的定制模块中，旧 jar 里存在的类，在重建后的新 jar 中都能找到。
+重建后的新 jar 仍保留了一些上游源码中的额外类，这些类不在旧运行时 jar 中。
 ```
 
-Selected member-signature audit:
+选定成员签名审计：
 
 ```text
-Audit method: javap -private on 27 selected custom classes.
-Compared: all fields plus non-private source-visible methods and constructors.
-Ignored: compiler-generated lambda$ and access$ bridge methods.
-Result: TOTAL missing-members=0 extra-members=8
+审计方法：对 27 个选定定制类执行 javap -private。
+对比范围：全部字段，以及非 private 的源码可见方法和构造方法。
+忽略范围：编译器生成的 lambda$ 和 access$ bridge 方法。
+结果：TOTAL missing-members=0 extra-members=8
 ```
 
-Important classes covered:
+覆盖的重要类：
 
 ```text
 CustomerDetail, UserDetail, UserDetailEntity, UserDetailService, TermParseUtil, CustomerController
@@ -224,16 +240,43 @@ AlarmHandleHistoryInfo, DeviceJob, DeviceJobLog, DeviceTrigger, SceneAction, Dev
 NotifyChannelEntity, UploadProperties
 ```
 
-Meaning:
+含义：
 
 ```text
-For the selected custom classes audited from the old jar, no old field or non-private method signature is missing in the rebuilt jar.
-The remaining extra members are from the rebuilt source retaining additional upstream/compatibility members.
+对于从旧 jar 中选出的定制类，重建后的源码没有缺失旧 jar 中的字段或非 private 方法签名。
+剩余 extra 成员主要来自重建源码保留的上游兼容成员。
 ```
 
-## Jar Extraction Work Areas
+## 2026-06-03 本地 MQTT 联调补充
 
-Temporary analysis files live outside the repository source tree:
+本地 `wj` 环境已经跑通 MQTT 模拟设备连接，详见：
+
+```text
+docs/reconstruction/local-mqtt-connection-status-20260603.md
+```
+
+关键结果：
+
+```text
+后端健康检查：{"status":"UP"}
+MQTT 端口：1883
+HTTP 端口：8848
+协议 ID：1816752822044901376
+设备 ID：869624060052013
+模拟 MQTT CONNECT 返回：returnCode=0
+连接保持期间，设备详情显示 state.value=online
+```
+
+本地联调额外补了两个本地恢复项：
+
+- 修复 Windows 本地 MQTT 连接时 `connection.getClientAddress()` 为空导致的 NPE。
+- 增加仅 `wj` profile 生效的本地 MQTT 认证和协议加载调试接口。
+
+这些改动用于新源码环境，不修改旧线上 jar。
+
+## Jar 解压和分析目录
+
+临时分析文件位于仓库源码树之外：
 
 ```text
 F:\project\other\jetlinks\.codex_tmp\lsx-fingerprint
@@ -241,22 +284,22 @@ F:\project\other\jetlinks\.codex_tmp\lsx-classes
 F:\project\other\jetlinks\.codex_tmp\lsx-device-jars
 ```
 
-They are analysis/extraction scratch directories, not source code.
+这些目录只是分析和解压 scratch 目录，不是源码。
 
-## Runtime Configuration Evidence
+## 运行配置证据
 
-The old jar includes `application.yml` and `application-wj.yml`.
+旧 jar 中包含 `application.yml` 和 `application-wj.yml`。
 
-Important finding: the old jar is configured primarily for MySQL + Redis, not the current failed PostgreSQL `jetlinks` database setup.
+重要结论：旧 jar 主要使用 MySQL + Redis，不是当前新版本 2.11 启动失败时遇到的 PostgreSQL `jetlinks` 数据库配置。
 
-Observed old jar profile examples:
+旧 jar 配置示例，不记录密码：
 
 ```text
 application.yml:
   spring.profiles.active: dev
-  spring.redis.host: remote Redis host from jar
-  spring.r2dbc.url: r2dbc:mysql://124.71.164.4:3306/device_wj?ssl=false&serverZoneId=Asia/Shanghai
-  easyorm.default-schema: device_wj
+  spring.redis.host: 旧线上 Redis 地址
+  spring.r2dbc.url: r2dbc:mysql://<线上 MySQL 地址>/<线上库名>?ssl=false&serverZoneId=Asia/Shanghai
+  easyorm.default-schema: 线上库名
   easyorm.dialect: mysql
   tdengine.enabled: false
 
@@ -272,20 +315,21 @@ application-wj.yml:
   tdengine.enabled: false
 ```
 
-Sensitive credentials are present in the jar configs and have now been restored into source resources for production parity.
-Treat these files as private repository material and do not publish raw secrets outside the private repo.
+敏感凭据存在于旧 jar 配置中，并且为了生产一致性已经恢复到私有源码资源。必须将这些配置视为私有仓库材料，不要在聊天、公开文档或公开仓库中传播原始密钥。
 
-## Immediate Next Step
+## 下一步建议
 
-Current branch direction:
+当前分支方向：
 
 ```text
-Keep the global project version changed to 2.1.1 and rebuild all modules as the reconstructed private version.
+保留全局版本 2.1.1，将所有模块作为私有恢复版本继续构建。
 ```
 
-Remaining work before treating this as fully aligned:
+继续工作前建议：
 
 ```text
-Optionally run a runtime smoke test against the intended MySQL/Redis environment.
-Investigate whether extra upstream classes should be excluded only if strict byte-for-byte jar parity becomes required.
+1. 保留当前已跑通 MQTT 的基线，不要随意回退。
+2. 决定 wj profile 下的本地调试接口是否只用于开发，线上部署前应审查。
+3. 用真实线上设备验证 REWEB 功能调用和远程页面打开。
+4. 如果要严格追求字节级一致，再评估是否需要移除重建 jar 中多出来的上游类。
 ```
